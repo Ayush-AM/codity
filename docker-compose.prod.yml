@@ -49,7 +49,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: ${DOCKER_REGISTRY:-codity}/codity-api:${IMAGE_TAG:-latest}
+    image: ${DOCKER_REGISTRY:-codity}/codity-backend:${IMAGE_TAG:-latest}
     container_name: codity_api_prod
     restart: always
     command: >
@@ -87,7 +87,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: ${DOCKER_REGISTRY:-codity}/codity-api:${IMAGE_TAG:-latest}
+    image: ${DOCKER_REGISTRY:-codity}/codity-backend:${IMAGE_TAG:-latest}
     restart: always
     command: python -m app.workers.main_worker --queue-id 00000000-0000-0000-0000-000000000000
     environment:
@@ -110,7 +110,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: ${DOCKER_REGISTRY:-codity}/codity-api:${IMAGE_TAG:-latest}
+    image: ${DOCKER_REGISTRY:-codity}/codity-backend:${IMAGE_TAG:-latest}
     container_name: codity_leader_prod
     restart: always
     command: python -m app.workers.scheduler --interval 10
@@ -133,7 +133,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: ${DOCKER_REGISTRY:-codity}/codity-api:${IMAGE_TAG:-latest}
+    image: ${DOCKER_REGISTRY:-codity}/codity-backend:${IMAGE_TAG:-latest}
     container_name: codity_reaper_prod
     restart: always
     command: python -m app.workers.reaper --interval 30 --threshold 15
