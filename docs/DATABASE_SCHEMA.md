@@ -125,7 +125,7 @@ Top-level multi-tenancy boundary.
 ### 3.2 `users`
 Authenticated users with Role-Based Access Control (RBAC).
 * **`id`** (`UUID`, PK): User identifier.
-* **`organization_id`** (`UUID`, FK $\rightarrow$ `organizations.id` ON DELETE CASCADE): Tenant reference.
+* **`organization_id`** (`UUID`, FK → `organizations.id` ON DELETE CASCADE): Tenant reference.
 * **`email`** (`VARCHAR(255)`, UNIQUE, INDEX): Login credential.
 * **`hashed_password`** (`VARCHAR(255)`): Bcrypt hash.
 * **`role`** (`ENUM('admin', 'member')`): Access tier.
@@ -133,14 +133,14 @@ Authenticated users with Role-Based Access Control (RBAC).
 ### 3.3 `projects`
 Environment-level grouping (e.g. Production, Staging).
 * **`id`** (`UUID`, PK): Project identifier.
-* **`organization_id`** (`UUID`, FK $\rightarrow$ `organizations.id` ON DELETE CASCADE): Tenant reference.
+* **`organization_id`** (`UUID`, FK → `organizations.id` ON DELETE CASCADE): Tenant reference.
 * **`name`** (`VARCHAR(255)`): Project name.
 * **`api_key`** (`VARCHAR(255)`, UNIQUE, INDEX): Programmatic authentication key.
 
 ### 3.4 `queues`
 Isolated work channels with concurrency and retry bounds.
 * **`id`** (`UUID`, PK): Queue identifier.
-* **`project_id`** (`UUID`, FK $\rightarrow$ `projects.id` ON DELETE CASCADE): Parent project.
+* **`project_id`** (`UUID`, FK → `projects.id` ON DELETE CASCADE): Parent project.
 * **`name`** (`VARCHAR(255)`): Channel name.
 * **`priority`** (`INTEGER`): Default queue priority (lower = higher urgency).
 * **`concurrency_limit`** (`INTEGER`): Max parallel worker execution cap.
@@ -150,10 +150,10 @@ Isolated work channels with concurrency and retry bounds.
 ### 3.5 `jobs`
 Core unit of background execution.
 * **`id`** (`UUID`, PK): Job identifier.
-* **`queue_id`** (`UUID`, FK $\rightarrow$ `queues.id` ON DELETE CASCADE): Queue reference.
-* **`worker_id`** (`UUID`, FK $\rightarrow$ `workers.id` ON DELETE SET NULL): Claiming worker.
-* **`depends_on_job_id`** (`UUID`, FK $\rightarrow$ `jobs.id` ON DELETE SET NULL): Workflow DAG parent dependency.
-* **`parent_job_id`** (`UUID`, FK $\rightarrow$ `jobs.id` ON DELETE SET NULL): Parent recurring template for cron instances.
+* **`queue_id`** (`UUID`, FK → `queues.id` ON DELETE CASCADE): Queue reference.
+* **`worker_id`** (`UUID`, FK → `workers.id` ON DELETE SET NULL): Claiming worker.
+* **`depends_on_job_id`** (`UUID`, FK → `jobs.id` ON DELETE SET NULL): Workflow DAG parent dependency.
+* **`parent_job_id`** (`UUID`, FK → `jobs.id` ON DELETE SET NULL): Parent recurring template for cron instances.
 * **`status`** (`ENUM('queued', 'scheduled', 'claimed', 'running', 'completed', 'failed', 'dead')`, INDEX): State machine status.
 * **`payload`** (`JSONB`): Task payload data.
 * **`priority`** (`INTEGER`, INDEX): Priority score.
@@ -163,7 +163,7 @@ Core unit of background execution.
 ### 3.6 `workers`
 Active and historical worker nodes in the cluster.
 * **`id`** (`UUID`, PK): Worker identifier.
-* **`queue_id`** (`UUID`, FK $\rightarrow$ `queues.id` ON DELETE SET NULL): Assigned queue.
+* **`queue_id`** (`UUID`, FK → `queues.id` ON DELETE SET NULL): Assigned queue.
 * **`hostname`** (`VARCHAR(255)`): Machine/container hostname.
 * **`pid`** (`INTEGER`): Operating system process ID.
 * **`status`** (`ENUM('active', 'dead')`, INDEX): Heartbeat liveness status.
@@ -180,6 +180,6 @@ To guarantee sub-millisecond query execution under heavy production volume:
 2. **`ix_jobs_scheduled_sweep`** (`status`, `scheduled_at`):
    Optimizes Leader scheduler sweeps for delayed/cron jobs eligible for promotion.
 3. **`ix_workers_heartbeat`** (`status`, `last_heartbeat_at`):
-   Optimizes Reaper scans for expired worker heartbeats ($> 15\text{s}$).
+   Optimizes Reaper scans for expired worker heartbeats (> 15s).
 4. **`ix_job_logs_timestamp`** (`job_id`, `created_at DESC`):
    Enables fast execution log retrieval in the React UI dashboard.

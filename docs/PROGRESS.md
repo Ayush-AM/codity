@@ -22,7 +22,7 @@ This document records the completed engineering milestones, system features, and
 - Delayed job promotion (`scheduled_at <= NOW()`) and 5-field cron parsing (`croniter`).
 
 ### 4. Self-Healing Reaper Service & DLQ Infrastructure
-- Autonomous sweeper monitoring worker heartbeats and marking missed nodes ($> 15\text{s}$) as `DEAD`.
+- Autonomous sweeper monitoring worker heartbeats and marking missed nodes (> 15s) as `DEAD`.
 - Zero-job-loss recovery: automatically re-enqueues in-flight jobs from dead workers.
 - Exponential backoff retry engine (`fixed`, `linear`, `exponential`).
 - Dead Letter Queue (DLQ) holding tank with single-click manual replay.

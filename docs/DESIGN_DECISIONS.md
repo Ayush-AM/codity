@@ -24,7 +24,7 @@ This document outlines the major architectural trade-offs, design choices, and t
 * **Rationale**:
   1. **Built-in Backpressure**: Workers only pull tasks when they have available capacity in their `ThreadPoolExecutor`. Slow workers naturally reduce poll rates, preventing node exhaustion.
   2. **Elastic Scaling**: Scaling up compute is as simple as launching additional worker containers (`docker compose up -d --scale worker=N`).
-  3. **Zero Consumer Contention**: `SKIP LOCKED` ensures $N$ parallel workers never attempt to lock or process the same job instance.
+  3. **Zero Consumer Contention**: `SKIP LOCKED` ensures N parallel workers never attempt to lock or process the same job instance.
 
 ---
 
@@ -32,7 +32,7 @@ This document outlines the major architectural trade-offs, design choices, and t
 
 * **Decision**: A centralized Leader Scheduler process handles recurring cron schedules (`croniter`) and delayed job promotion (`scheduled_at`).
 * **Rationale**:
-  * If $N$ worker processes simultaneously evaluated cron schedules, duplicate job instances would be spawned.
+  * If N worker processes simultaneously evaluated cron schedules, duplicate job instances would be spawned.
   * The Leader Scheduler acquires PostgreSQL advisory locks (`pg_try_advisory_lock`) to guarantee single-instance evaluation, eliminating schedule race conditions while keeping workers focused purely on job execution.
 
 ---
@@ -42,7 +42,7 @@ This document outlines the major architectural trade-offs, design choices, and t
 * **Decision**: The cluster features a dedicated Reaper service monitoring worker liveness.
 * **Rationale**:
   * Workers send heartbeat pings every 5 seconds. If a node crashes (e.g. Out-Of-Memory, kernel panic, cloud server termination), it stops heartbeating.
-  * The Reaper scans for workers with missed heartbeats ($> 15\text{s}$), transitions them to `DEAD`, and automatically re-queues all in-flight jobs.
+  * The Reaper scans for workers with missed heartbeats (> 15s), transitions them to `DEAD`, and automatically re-queues all in-flight jobs.
   * **Result**: Zero lost jobs during cluster node failures.
 
 ---
@@ -57,6 +57,6 @@ This document outlines the major architectural trade-offs, design choices, and t
 
 ## 6. Multi-Tenant Scoping & Security
 
-* **Decision**: All resources are strictly scoped under `Organizations` $\rightarrow$ `Projects` $\rightarrow$ `Queues` $\rightarrow$ `Jobs`.
+* **Decision**: All resources are strictly scoped under `Organizations` → `Projects` → `Queues` → `Jobs`.
 * **Rationale**:
   * Enforces hard multi-tenant boundaries suitable for enterprise SaaS applications. JWT bearer tokens carry the user's `organization_id`, preventing cross-tenant data leakage.

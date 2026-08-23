@@ -6,15 +6,43 @@ Engineered for ultra-high reliability, multi-tenant isolation, sub-millisecond c
 
 ---
 
+## 🚀 Live AWS Cloud Deployment (Region: `ap-south-1` Mumbai)
+
+Codity is fully deployed and running live on AWS in Mumbai:
+
+- 🖥️ **Web Dashboard (Frontend UI)**: [http://13.203.206.19](http://13.203.206.19)
+- ⚙️ **API Control Plane (Backend)**: [http://13.203.206.19:8000](http://13.203.206.19:8000)
+- 💚 **Live Health Readiness Probe**: [http://13.203.206.19:8000/health/ready](http://13.203.206.19:8000/health/ready)
+- 📚 **Swagger API Docs**: [http://13.203.206.19:8000/docs](http://13.203.206.19:8000/docs)
+- 📦 **Container Registry (AWS ECR)**: `206690614418.dkr.ecr.ap-south-1.amazonaws.com`
+
+---
+
+## 📚 Complete Project Documentation Map
+
+Access all deep-dive architecture specs, database schemas, design decisions, and deployment manuals directly below without needing to browse files in `docs/`:
+
+| Document Topic | File Location | Description & Contents |
+| :--- | :--- | :--- |
+| 🏛️ **Architecture & State Machine** | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | C4 Component Diagrams, `FOR UPDATE SKIP LOCKED` claim logic, Single-Leader Advisory Lock Scheduler, Reaper Sweeper. |
+| ☁️ **AWS Production Deployment** | [`docs/AWS_DEPLOYMENT_GUIDE.md`](docs/AWS_DEPLOYMENT_GUIDE.md) | AWS ECR URIs, EC2 `t3.small` server configuration, Security Groups, `user-data.sh` script, SSH access, verification. |
+| 🗄️ **Database Schema & ERD** | [`docs/DATABASE_SCHEMA.md`](docs/DATABASE_SCHEMA.md) | Complete Relational ER Diagram, Indexing strategies, FK Cascading rules, table schema specifications. |
+| 💡 **Design Decisions & Trade-offs** | [`docs/DESIGN_DECISIONS.md`](docs/DESIGN_DECISIONS.md) | Technical rationale: Postgres `SKIP LOCKED` vs RabbitMQ/Celery, Redis `SETNX` idempotency, jittered exponential backoffs. |
+| ☁️ **Universal Cloud Hosting** | [`docs/CLOUD_DEPLOYMENT.md`](docs/CLOUD_DEPLOYMENT.md) | Step-by-step guides for AWS ECS/EKS, GCP Cloud Run, Azure, DigitalOcean, Kubernetes, Railway, Render, Fly.io. |
+| 📈 **Milestones & Progress Log** | [`docs/PROGRESS.md`](docs/PROGRESS.md) | Feature implementation log, 37 test suite validation history, completed system milestones. |
+| 📋 **Assignment Briefs & Specs** | [`docs/specs/`](docs/specs/) | Original specification documents including `task.txt` and problem statement PDFs. |
+
+---
+
 ## Key Features
 
 * **Multi-Tenant Security & Isolation**: Strict project and organization scoping with JWT authentication (Bcrypt rounds=12) and Role-Based Access Control (`ADMIN` / `MEMBER`).
 * **Atomic Concurrency Control**: High-throughput distributed queue consumption using PostgreSQL `SELECT ... FOR UPDATE SKIP LOCKED` without lock contention or race conditions.
-* **24-Hour Redis Idempotency Cache**: $O(1)$ duplicate request elimination via Redis `SETNX` with 24-hour TTL and seamless PostgreSQL fallback.
+* **24-Hour Redis Idempotency Cache**: `O(1)` duplicate request elimination via Redis `SETNX` with 24-hour TTL and seamless PostgreSQL fallback.
 * **Flexible Scheduling Engine**: Single-leader elected scheduler via PostgreSQL Advisory Locks (`pg_try_advisory_lock`) handling both delayed execution and recurring standard 5-field cron templates (`croniter`).
 * **Resilient Retry Backoff**: Configurable per-queue retry policies: `Fixed`, `Linear`, and `Exponential with Full Jitter`.
 * **Dead Letter Queue (DLQ) & Single-Click Replay**: Automatically sequesters exhausted jobs into DLQ with reason payloads and instant manual re-dispatching.
-* **Stale Worker & Orphaned Job Reaper**: Autonomous sweeper detecting dead nodes (expired heartbeats $> 15\text{s}$) and immediately recovering in-flight jobs back to `queued`.
+* **Stale Worker & Orphaned Job Reaper**: Autonomous sweeper detecting dead nodes (expired heartbeats > 15s) and immediately recovering in-flight jobs back to `queued`.
 * **Live Telemetry & React Dashboard**: Real-time KPI cards, 24-hour execution throughput charts, worker cluster node monitoring, and interactive job explorers.
 * **Cloud-Native & Kubernetes Ready**: Complete production Docker Compose manifests (`docker-compose.prod.yml`) and Kubernetes specs (`k8s/codity-all-in-one.yaml`).
 
@@ -55,49 +83,23 @@ flowchart TD
 
 ---
 
-## 🚀 Live AWS Cloud Deployment (Region: `ap-south-1` Mumbai)
-
-Codity is fully deployed and running live on AWS in Mumbai:
-
-- 🖥️ **Web Dashboard (Frontend UI)**: [http://13.203.206.19](http://13.203.206.19)
-- ⚙️ **API Control Plane (Backend)**: [http://13.203.206.19:8000](http://13.203.206.19:8000)
-- 💚 **Live Health Readiness Probe**: [http://13.203.206.19:8000/health/ready](http://13.203.206.19:8000/health/ready)
-- 📚 **Swagger API Docs**: [http://13.203.206.19:8000/docs](http://13.203.206.19:8000/docs)
-- 📦 **Container Registry (ECR)**: `206690614418.dkr.ecr.ap-south-1.amazonaws.com`
-
----
-
-## Documentation Index
-
-All architectural specifications, database schemas, design decisions, and cloud deployment guides are organized in the [`docs/`](docs/) directory:
-
-* ☁️ **[AWS Production Deployment Guide (`docs/AWS_DEPLOYMENT_GUIDE.md`)](docs/AWS_DEPLOYMENT_GUIDE.md)**: Deep dive into ECR image builds, EC2 server configuration, security groups, and live production deployment.
-* 🏛️ **[Architecture Specifications (`docs/ARCHITECTURE.md`)](docs/ARCHITECTURE.md)**: Deep dive into distributed systems architecture, state machines, and concurrency models.
-* ☁️ **[Universal Cloud Deployment Manual (`docs/CLOUD_DEPLOYMENT.md`)](docs/CLOUD_DEPLOYMENT.md)**: Step-by-step guides for AWS ECS/EKS, GCP Cloud Run/GKE, Azure, DigitalOcean, Railway, Render, and Fly.io.
-* 🗄️ **[Database Schema Design (`docs/DATABASE_SCHEMA.md`)](docs/DATABASE_SCHEMA.md)**: Complete relational ER diagram, indexes, cascading rules, and normalization design.
-* 💡 **[Design Decisions & Trade-offs (`docs/DESIGN_DECISIONS.md`)](docs/DESIGN_DECISIONS.md)**: Engineering rationale behind Postgres `SKIP LOCKED` vs RabbitMQ/Celery, single-leader election, and idempotency guarantees.
-* 📈 **[Milestones & Implementation Log (`docs/PROGRESS.md`)](docs/PROGRESS.md)**: Completed milestones and implementation logs.
-* 📋 **[Assignment Specs & Briefs (`docs/specs/`)](docs/specs/)**: Original assignment documents including `task.txt` and PDF specifications.
-
----
-
 ## Quick Start (Docker Compose)
 
-The fastest way to spin up the entire cluster:
+The fastest way to spin up the entire cluster locally:
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/your-username/codity.git
+git clone https://github.com/Ayush-AM/codity.git
 cd codity
 
-# 2. Build and launch all 8 microservices in detached mode
+# 2. Build and launch all microservices in detached mode
 docker compose up --build -d
 
 # 3. Stream backend logs
 docker compose logs -f api
 ```
 
-### Access URLs:
+### Access URLs (Local):
 * **Frontend Dashboard:** [http://localhost:5173](http://localhost:5173) (Default Admin: `admin@example.com` / `StrongP@ss123`)
 * **Interactive Swagger Docs:** [http://localhost:8000/docs](http://localhost:8000/docs)
 * **ReDoc Documentation:** [http://localhost:8000/redoc](http://localhost:8000/redoc)
@@ -147,9 +149,9 @@ Output:
 | | `test_scheduler_promotes_delayed_jobs` | Verifies leader scheduler automatically promotes due delayed jobs to `queued`. |
 | | `test_submit_cron_job` | Verifies standard 5-field cron expression parsing (e.g. `*/5 * * * *`) and recurring template creation. |
 | | `test_scheduler_evaluates_cron_templates` | Verifies leader scheduler evaluates active cron templates and spawns executable child jobs. |
-| **Retry Engine & Backoff Math** | `test_fixed_retry_delay` | Verifies fixed retry delay calculation ($T = \text{base\_delay}$). |
-| | `test_linear_retry_delay` | Verifies linear retry delay calculation ($T = \text{base\_delay} \times \text{attempt}$). |
-| | `test_exponential_retry_delay_with_cap` | Verifies exponential retry delay ($T = \text{base\_delay} \times 2^{\text{attempt}}$) capped at maximum duration. |
+| **Retry Engine & Backoff Math** | `test_fixed_retry_delay` | Verifies fixed retry delay calculation (`T = base_delay`). |
+| | `test_linear_retry_delay` | Verifies linear retry delay calculation (`T = base_delay * attempt`). |
+| | `test_exponential_retry_delay_with_cap` | Verifies exponential retry delay (`T = base_delay * 2^attempt`) capped at maximum duration. |
 | | `test_exponential_retry_delay_with_jitter` | Verifies full jitter randomization to prevent thundering herd API retries. |
 | | `test_calculate_retry_delay_fixed` | Unit test for fixed policy calculation. |
 | | `test_calculate_retry_delay_linear` | Unit test for linear policy calculation. |
@@ -158,11 +160,11 @@ Output:
 | **Dead Letter Queue & Replay** | `test_move_exhausted_job_to_dlq_and_replay` | Verifies jobs exceeding `max_retries` transition to `dead` and move to DLQ. |
 | | `test_dlq_manual_retry` | Verifies single-click DLQ replay endpoint re-queuing dead jobs back to active queues. |
 | | `test_job_failure_and_retry` | Verifies end-to-end execution failure logging and attempt incrementing. |
-| **Self-Healing Reaper & Crash Recovery** | `test_reaper_sweeps_dead_workers_and_recovers_jobs` | Simulates crashed worker node ($> 15\text{s}$ heartbeat); verifies Reaper marks node `dead` & re-queues in-flight jobs. |
+| **Self-Healing Reaper & Crash Recovery** | `test_reaper_sweeps_dead_workers_and_recovers_jobs` | Simulates crashed worker node (> 15s heartbeat); verifies Reaper marks node `dead` & re-queues in-flight jobs. |
 | | `test_reaper_recovery` | Integration test verifying zero job loss during worker container crashes. |
 | | `test_job_executions_and_logs_queries` | Verifies audit log insertion (`job_logs`) and execution history tracking (`job_executions`). |
 | **Job Explorer & Idempotency** | `test_create_immediate_job` | Integration test for end-to-end job submission endpoint. |
-| | `test_job_lifecycle` | Tests complete state flow: `QUEUED` $\rightarrow$ `CLAIMED` $\rightarrow$ `RUNNING` $\rightarrow$ `COMPLETED`. |
+| | `test_job_lifecycle` | Tests complete state flow: `QUEUED` → `CLAIMED` → `RUNNING` → `COMPLETED`. |
 | | `test_job_submission_idempotency` | Tests Redis `Idempotency-Key` deduplication, blocking duplicate submissions within 24h. |
 | | `test_job_explorer_filtering` | Verifies paginated job search by status, queue, and text query. |
 | | `test_create_and_manage_queues` | Verifies queue creation, priority, concurrency limits, and pause/resume toggles. |
@@ -195,30 +197,31 @@ Output:
 
 ```text
 .
-├── app/
-│   ├── api/v1/endpoints/  # Auth, Queues, Jobs, Workers, DLQ, Metrics, Health
-│   ├── core/              # Config, DB connection, JWT Security, Shutdown
-│   ├── models/            # SQLAlchemy 2.0 ORM Declarations
-│   ├── schemas/           # Pydantic V2 Request/Response Validation
-│   ├── services/          # Claimer, Executor, Retry, DLQ, Scheduler, Reaper, Metrics
-│   ├── utils/             # Helpers & utilities
-│   ├── workers/           # Main Worker, Scheduler Leader, Reaper Sweeper
-│   └── main.py            # FastAPI Application Entrypoint
-├── alembic/               # Database Version Migrations
-├── frontend/              # React 18 + Vite + MUI + React Query Dashboard
-├── k8s/                   # Kubernetes Production Manifests (codity-all-in-one.yaml)
-├── docs/                  # Project Documentation, Architecture & Specs
-│   ├── specs/             # Original Assignment task.txt & PDF Specs
-│   ├── ARCHITECTURE.md    # C4 Diagrams & Architectural Specs
-│   ├── CLOUD_DEPLOYMENT.md# Universal Cloud Hosting Manual
-│   ├── DATABASE_SCHEMA.md # Relational Schema & Indexing Models
-│   ├── DESIGN_DECISIONS.md# Technical Trade-offs & Analysis
-│   └── PROGRESS.md        # Milestone Tracking
-├── tests/                 # Full Pytest Test Suite (37 Tests)
-├── docker-compose.yml     # Multi-container orchestration
-├── docker-compose.prod.yml# Production compose spec
-├── Dockerfile             # Multi-stage Python 3.11 build
-├── requirements.txt       # Python Dependencies
-├── pytest.ini             # Pytest Configuration
-└── pyrightconfig.json     # Workspace Typechecking Configuration
+├── app/                        # FastAPI Backend & Async Workers
+│   ├── api/v1/endpoints/       # Auth, Queues, Jobs, Workers, DLQ, Metrics, Health
+│   ├── core/                   # Config, DB connection, JWT Security, Shutdown
+│   ├── models/                 # SQLAlchemy 2.0 ORM Declarations
+│   ├── schemas/                # Pydantic V2 Request/Response Validation
+│   ├── services/               # Claimer, Executor, Retry, DLQ, Scheduler, Reaper, Metrics
+│   ├── utils/                  # Helpers & utilities
+│   ├── workers/                # Main Worker, Scheduler Leader, Reaper Sweeper
+│   └── main.py                 # FastAPI Application Entrypoint
+├── alembic/                    # Database Version Migrations
+├── frontend/                   # React 18 + Vite + MUI + React Query Dashboard
+├── k8s/                        # Kubernetes Production Manifests (codity-all-in-one.yaml)
+├── docs/                       # Project Documentation & Architecture
+│   ├── specs/                  # Original Assignment task.txt & PDF Specs
+│   ├── ARCHITECTURE.md         # C4 Diagrams & Architectural Specs
+│   ├── AWS_DEPLOYMENT_GUIDE.md # AWS ECR + EC2 Production Deployment Guide
+│   ├── CLOUD_DEPLOYMENT.md     # Universal Cloud Hosting Manual
+│   ├── DATABASE_SCHEMA.md      # Relational Schema & Indexing Models
+│   ├── DESIGN_DECISIONS.md     # Technical Trade-offs & Analysis
+│   └── PROGRESS.md             # Milestone Tracking
+├── tests/                      # Full Pytest Test Suite (37 Tests)
+├── docker-compose.yml          # Multi-container orchestration
+├── docker-compose.prod.yml     # Production compose spec
+├── Dockerfile                  # Multi-stage Python 3.11 build
+├── requirements.txt            # Python Dependencies
+├── pytest.ini                  # Pytest Configuration
+└── pyrightconfig.json          # Workspace Typechecking Configuration
 ```

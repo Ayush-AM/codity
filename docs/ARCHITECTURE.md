@@ -8,7 +8,7 @@
 1. **Pull-Based Worker Model**: Eliminates message broker consumer bottlenecks by utilizing PostgreSQL row-level locks (`SELECT ... FOR UPDATE SKIP LOCKED`) for contention-free atomic task claiming.
 2. **Zero Third-Party Message Queue Overhead**: Eliminates external queue broker dependencies (like RabbitMQ or Celery) by maintaining the entire job state machine transactionally inside PostgreSQL.
 3. **Self-Healing Cluster Architecture**: Features automated leader election, stale worker reaping, intelligent exponential retry backoffs, and Dead Letter Queue (DLQ) isolation.
-4. **Strict Multi-Tenancy**: Scopes all operations hierarchically under `Organizations` $\rightarrow$ `Projects` $\rightarrow$ `Queues` $\rightarrow$ `Jobs`.
+4. **Strict Multi-Tenancy**: Scopes all operations hierarchically under `Organizations` → `Projects` → `Queues` → `Jobs`.
 
 ---
 
@@ -111,22 +111,99 @@ stateDiagram-v2
 * **`COMPLETED`**: Execution finished with return code `0` / clean status.
 * **`FAILED`**: Execution failed; backoff delay calculated before re-enqueueing.
 * **`DEAD`**: Permanent failure. Retries exhausted; stored in Dead Letter Queue for inspection/replay.
+        API_CLIENT["External API / SDK Clients"]
+    end
+
+    subgraph ControlPlane["Codity Control Plane (FastAPI / Uvicorn)"]
+        API["FastAPI REST Server (Port 8000)"]
+        LEADER["Leader Scheduler (Cron & Delayed Promotion)"]
+        REAPER["Reaper Service (Worker Health & DLQ Sweep)"]
+    end
+
+    subgraph StorageLayer["Persistence & Caching"]
+        DB[(PostgreSQL 16 Engine\nSKIP LOCKED Queue State)]
+        REDIS[(Redis 7 Cache\nReal-time Metrics)]
+    end
+
+    subgraph WorkerCluster["Worker Compute Pool"]
+        W1["Worker Node 1\n(Async Execution Engine)"]
+        W2["Worker Node 2\n(Async Execution Engine)"]
+        WN["Worker Node N\n(Async Execution Engine)"]
+    end
+
+    UI -->|REST / Bearer Auth| API
+    API_CLIENT -->|REST / API Key| API
+    API --> DB
+    API --> REDIS
+    LEADER -->|Advisory Lock| DB
+    REAPER -->|Heartbeat Check| DB
+    W1 -->|SKIP LOCKED Claim| DB
+    W2 -->|SKIP LOCKED Claim| DB
+    WN -->|SKIP LOCKED Claim| DB
+```
 
 ---
 
-## 5. Deep-Dive Mechanisms
+## 3. Core Component Deep-Dive
 
-### 5.1 Atomic Job Claiming Algorithm
-To prevent race conditions, double-claiming, and lock contention between multiple worker processes, Codity uses PostgreSQL's native `FOR UPDATE SKIP LOCKED` primitive:
+### 3.1 Control Plane (FastAPI REST Server)
+* Serves as the central management plane providing CRUD endpoints for Organizations, Projects, Queues, Jobs, Workers, and Analytics.
+* Enforces JWT authentication (`pyjwt`) and API Key authentication.
+* Writes job submissions directly into PostgreSQL.
 
-$$\text{Claim Logic} = \text{SELECT job WHERE status = 'queued' AND queue\_id = Q ORDER BY priority ASC, created\_at ASC FOR UPDATE SKIP LOCKED LIMIT 1}$$
+### 3.2 Leader Scheduler Process
+* Acquired using PostgreSQL Advisory Locks (`pg_try_advisory_lock`).
+* **Cron Promotion**: Evaluates `cron_expression` schedules using `croniter` and enqueues recurring instances.
+* **Delayed Job Sweep**: Promotes jobs with `scheduled_at <= NOW()` from `scheduled` to `queued` state.
+
+### 3.3 Reaper Service
+* Runs background loops to check worker liveness.
+* Marks workers as `DEAD` if their `last_heartbeat` exceeds 15 seconds.
+* Automatically re-queues any in-flight jobs claimed by dead workers to prevent lost tasks.
+
+### 3.4 Worker Compute Engine
+* Pulls tasks from assigned queues using atomic SQL query locks.
+* Executes Python callables or shell sub-processes asynchronously (`ThreadPoolExecutor`).
+* Updates job outcome (`completed`, `failed`) and stores logs & error tracebacks.
+
+---
+
+## 4. Database Schema Structure
+
+The platform uses PostgreSQL as the unified transaction log and queue broker.
+
+```
++-------------------+       +-------------------+       +-------------------+
+|   organizations   | 1---* |     projects      | 1---* |      queues       |
++-------------------+       +-------------------+       +-------------------+
+                                                                  | 1
+                                                                  |
+                                                                  *
+                                                        +-------------------+
+                                                        |       jobs        |
+                                                        +-------------------+
+                                                                  | *
+                                                                  |
+                                                                  1
+                                                        +-------------------+
+                                                        |      workers      |
+                                                        +-------------------+
+```
+
+---
+
+## 5. Execution Lifecycle & Mathematical Models
+
+### 5.1 Atomic Worker Job Claiming
+Workers execute atomic job reservations via PostgreSQL row-level locks:
 
 ```sql
 WITH next_job AS (
-    SELECT id 
+    SELECT id
     FROM jobs
-    WHERE queue_id = :queue_id 
+    WHERE queue_id = :queue_id
       AND status = 'queued'
+      AND (scheduled_at IS NULL OR scheduled_at <= NOW())
     ORDER BY priority ASC, created_at ASC
     FOR UPDATE SKIP LOCKED
     LIMIT 1
@@ -139,27 +216,31 @@ FROM next_job
 WHERE jobs.id = next_job.id
 RETURNING jobs.*;
 ```
-* **Queue Concurrency Limits**: Before claiming a job from queue $Q$, the system verifies that current active claimed/running jobs for $Q$ do not exceed $Q.\text{concurrency\_limit}$.
+* **Queue Concurrency Limits**: Before claiming a job from queue Q, the system verifies that current active claimed/running jobs for Q do not exceed `queue.concurrency_limit`.
 
 ### 5.2 Retry Policy & Backoff Math
 When a job fails, the system calculates the delay before the job becomes eligible for retry based on the Queue's configured strategy:
 
 1. **Fixed Delay**:
-   $$T_{\text{delay}} = \text{base\_delay}$$
+   `Delay = base_delay`
 
 2. **Linear Backoff**:
-   $$T_{\text{delay}} = \text{base\_delay} \times \text{retry\_count}$$
+   `Delay = base_delay * retry_count`
 
 3. **Exponential Backoff**:
-   $$T_{\text{delay}} = \text{base\_delay} \times 2^{\text{retry\_count}}$$
+   `Delay = base_delay * (2 ^ retry_count)`
 
-$$\text{New Scheduled Timestamp} = \text{NOW}() + T_{\text{delay}}$$
+`Scheduled Time = NOW() + Delay`
 
 ### 5.3 Cluster Fault Tolerance & Reaper Recovery
 * **Heartbeat Mechanism**: Every worker process sends an heartbeat ping every 5 seconds updating its record in the `workers` table:
-  $$\text{UPDATE workers SET last\_heartbeat = NOW() WHERE id = :worker\_id}$$
-* **Reaper Sweeper**: The Reaper service sweeps the `workers` table every 10 seconds:
-  $$\text{Dead Condition} = \text{last\_heartbeat} < \text{NOW}() - \text{INTERVAL } '30\text{ seconds}'$$
+  ```sql
+  UPDATE workers SET last_heartbeat = NOW() WHERE id = :worker_id;
+  ```
+* **Reaper Sweeper**: The Reaper service sweeps the `workers` table every 10 seconds to detect dead worker nodes:
+  ```sql
+  SELECT id FROM workers WHERE last_heartbeat < NOW() - INTERVAL '15 seconds';
+  ```
 * **Orphan Job Rescheduling**: Any jobs stuck in `claimed` or `running` assigned to a `dead` worker are automatically reset to `queued` with their retry counters updated, ensuring zero lost tasks.
 
 ---
