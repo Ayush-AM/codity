@@ -1,6 +1,6 @@
 # Codity AWS ECR Build & Deployment Helper Script
 param(
-    [string]$Region = "us-east-1",
+    [string]$Region = "ap-south-1",
     [string]$AccountId = ""
 )
 
