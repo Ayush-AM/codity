@@ -6,10 +6,10 @@ This document provides a comprehensive operational guide for the production depl
 
 ## 🌐 Live Production Deployment Overview
 
-- 🖥️ **Web Dashboard (React SPA)**: [http://13.203.206.19](http://13.203.206.19)
-- ⚙️ **API Control Plane (FastAPI)**: [http://13.203.206.19:8000](http://13.203.206.19:8000)
-- 💚 **Live Health Check Endpoint**: [http://13.203.206.19:8000/health/ready](http://13.203.206.19:8000/health/ready)
-- 📚 **Swagger API Documentation**: [http://13.203.206.19:8000/docs](http://13.203.206.19:8000/docs)
+- 🖥️ **Web Dashboard (React SPA)**: [http://3.7.73.152](http://3.7.73.152)
+- ⚙️ **API Control Plane (FastAPI)**: [http://3.7.73.152:8000](http://3.7.73.152:8000)
+- 💚 **Live Health Check Endpoint**: [http://3.7.73.152:8000/health/ready](http://3.7.73.152:8000/health/ready)
+- 📚 **Swagger API Documentation**: [http://3.7.73.152:8000/docs](http://3.7.73.152:8000/docs)
 - 📦 **GitHub Repository**: [https://github.com/Ayush-AM/codity](https://github.com/Ayush-AM/codity)
 
 ---
@@ -18,18 +18,18 @@ This document provides a comprehensive operational guide for the production depl
 
 ```mermaid
 flowchart TD
-    subgraph Clients
+    subgraph Clients ["Clients & External Access"]
         Browser["User Browser / React Dashboard"]
         ClientAPI["External Services / REST Clients"]
     end
 
-    subgraph AWS Cloud (ap-south-1 Mumbai)
+    subgraph AWS_Cloud ["AWS Cloud (ap-south-1 Mumbai)"]
         subgraph ECR ["Amazon Elastic Container Registry (ECR)"]
             ECR_BE["206690614418.dkr.ecr.ap-south-1.amazonaws.com/codity-backend:latest"]
             ECR_FE["206690614418.dkr.ecr.ap-south-1.amazonaws.com/codity-frontend:latest"]
         end
 
-        subgraph EC2 ["Amazon EC2 Instance (t3.small - 13.203.206.19)"]
+        subgraph EC2 ["Amazon EC2 Instance (t3.small - 3.7.73.152)"]
             subgraph DockerCompose ["Docker Compose Production Stack"]
                 FE["codity_frontend_prod (Nginx :80)"]
                 API["codity_api_prod (FastAPI :8000)"]
@@ -65,12 +65,12 @@ flowchart TD
 | **AWS Region** | `ap-south-1` (Mumbai, India) |
 | **AWS Account ID** | `206690614418` |
 | **IAM Deployer User** | `Codity` (`arn:aws:iam::206690614418:user/Codity`) |
-| **EC2 Server Instance ID** | `i-02302a30c24281bae` |
+| **EC2 Server Instance ID** | `i-040eaed3beb59a46a` |
 | **Instance Type** | `t3.small` (2 vCPU, 2GB RAM) |
-| **Public IPv4 Address** | `13.203.206.19` |
+| **Public IPv4 Address** | `3.7.73.152` |
 | **Security Group** | `codity-sg` (`sg-0b0b453e72828dfd4`) |
 | **Inbound Security Rules** | Port `22` (SSH), Port `80` (HTTP), Port `8000` (API), Port `443` (HTTPS) |
-| **SSH Key Pair** | `codity-key-v3` (`codity-key.pem` saved locally) |
+| **SSH Key Pair** | `codity-key` (`codity-key.pem` saved locally) |
 
 ---
 
@@ -120,9 +120,7 @@ When launching the EC2 instance, the automated user-data script installs depende
 exec > /var/log/user-data.log 2>&1
 set -ex
 
-# AWS Credentials
-export AWS_ACCESS_KEY_ID="AKIATAH5YPSJHS2Y3U6W"
-export AWS_SECRET_ACCESS_KEY="<AWS_SECRET_ACCESS_KEY>"
+# AWS Region
 export AWS_DEFAULT_REGION="ap-south-1"
 
 # Install Docker & Git
@@ -155,10 +153,10 @@ To verify the live server status from any terminal:
 
 ```bash
 # Check Frontend status
-curl -I http://13.203.206.19
+curl -I http://3.7.73.152
 
 # Check Backend readiness probe
-curl http://13.203.206.19:8000/health/ready
+curl http://3.7.73.152:8000/health/ready
 ```
 
 Expected Output:
@@ -178,7 +176,7 @@ Expected Output:
 To SSH into the live server:
 
 ```powershell
-ssh -i codity-key.pem ec2-user@13.203.206.19
+ssh -i codity-key.pem ec2-user@3.7.73.152
 ```
 
 Useful management commands on the server:

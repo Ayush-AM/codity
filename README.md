@@ -10,10 +10,10 @@ Engineered for ultra-high reliability, multi-tenant isolation, sub-millisecond c
 
 Codity is fully deployed and running live on AWS in Mumbai:
 
-- 🖥️ **Web Dashboard (Frontend UI)**: [http://13.203.206.19](http://13.203.206.19)
-- ⚙️ **API Control Plane (Backend)**: [http://13.203.206.19:8000](http://13.203.206.19:8000)
-- 💚 **Live Health Readiness Probe**: [http://13.203.206.19:8000/health/ready](http://13.203.206.19:8000/health/ready)
-- 📚 **Swagger API Docs**: [http://13.203.206.19:8000/docs](http://13.203.206.19:8000/docs)
+- 🖥️ **Web Dashboard (Frontend UI)**: [http://3.7.73.152](http://3.7.73.152)
+- ⚙️ **API Control Plane (Backend)**: [http://3.7.73.152:8000](http://3.7.73.152:8000)
+- 💚 **Live Health Readiness Probe**: [http://3.7.73.152:8000/health/ready](http://3.7.73.152:8000/health/ready)
+- 📚 **Swagger API Docs**: [http://3.7.73.152:8000/docs](http://3.7.73.152:8000/docs)
 - 📦 **Container Registry (AWS ECR)**: `206690614418.dkr.ecr.ap-south-1.amazonaws.com`
 
 ---
@@ -52,18 +52,18 @@ Access all deep-dive architecture specs, database schemas, design decisions, and
 
 ```mermaid
 flowchart TD
-    subgraph Clients
+    subgraph Clients ["Clients & External Access"]
         Web["React Dashboard SPA (:5173)"]
         API_Client["REST Client / External Services"]
     end
 
-    subgraph Core Platform
+    subgraph CorePlatform ["Core Platform & Data Tier"]
         API["FastAPI Backend (:8000)"]
         Redis[("Redis 7 - Idempotency Cache (:6379)")]
         DB[("PostgreSQL 16 - Relational Store (:5432)")]
     end
 
-    subgraph Background Engines
+    subgraph BackgroundEngines ["Background Engines & Sweepers"]
         Worker["Worker Node - Atomic Claimer & Executor"]
         Scheduler["Scheduler Engine - Advisory Lock Leader"]
         Reaper["Reaper Sweeper - Stale Job Recovery"]
