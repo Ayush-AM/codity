@@ -55,10 +55,23 @@ flowchart TD
 
 ---
 
+## 🚀 Live AWS Cloud Deployment (Region: `ap-south-1` Mumbai)
+
+Codity is fully deployed and running live on AWS in Mumbai:
+
+- 🖥️ **Web Dashboard (Frontend UI)**: [http://13.203.206.19](http://13.203.206.19)
+- ⚙️ **API Control Plane (Backend)**: [http://13.203.206.19:8000](http://13.203.206.19:8000)
+- 💚 **Live Health Readiness Probe**: [http://13.203.206.19:8000/health/ready](http://13.203.206.19:8000/health/ready)
+- 📚 **Swagger API Docs**: [http://13.203.206.19:8000/docs](http://13.203.206.19:8000/docs)
+- 📦 **Container Registry (ECR)**: `206690614418.dkr.ecr.ap-south-1.amazonaws.com`
+
+---
+
 ## Documentation Index
 
 All architectural specifications, database schemas, design decisions, and cloud deployment guides are organized in the [`docs/`](docs/) directory:
 
+* ☁️ **[AWS Production Deployment Guide (`docs/AWS_DEPLOYMENT_GUIDE.md`)](docs/AWS_DEPLOYMENT_GUIDE.md)**: Deep dive into ECR image builds, EC2 server configuration, security groups, and live production deployment.
 * 🏛️ **[Architecture Specifications (`docs/ARCHITECTURE.md`)](docs/ARCHITECTURE.md)**: Deep dive into distributed systems architecture, state machines, and concurrency models.
 * ☁️ **[Universal Cloud Deployment Manual (`docs/CLOUD_DEPLOYMENT.md`)](docs/CLOUD_DEPLOYMENT.md)**: Step-by-step guides for AWS ECS/EKS, GCP Cloud Run/GKE, Azure, DigitalOcean, Railway, Render, and Fly.io.
 * 🗄️ **[Database Schema Design (`docs/DATABASE_SCHEMA.md`)](docs/DATABASE_SCHEMA.md)**: Complete relational ER diagram, indexes, cascading rules, and normalization design.

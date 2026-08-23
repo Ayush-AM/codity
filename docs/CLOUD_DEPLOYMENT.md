@@ -1,10 +1,5 @@
 # ☁️ Universal Cloud Deployment Guide — Codity
 
-This guide provides step-by-step production deployment instructions for hosting **Codity** across any major cloud infrastructure provider:
-* **AWS** (ECS Fargate / EKS Kubernetes)
-* **Google Cloud Platform** (Cloud Run / GKE)
-* **Microsoft Azure** (Container Apps / AKS)
-* **DigitalOcean** (App Platform / Kubernetes)
 * **1-Click PaaS** (Railway / Render / Fly.io)
 
 ---
