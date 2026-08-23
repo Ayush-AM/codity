@@ -1,0 +1,231 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: codity
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: codity-config
+  namespace: codity
+data:
+  APP_ENV: "production"
+  DEBUG: "false"
+  CORS_ORIGINS: "*"
+  POLL_INTERVAL_SECONDS: "2"
+  HEARTBEAT_INTERVAL_SECONDS: "5"
+  SCHEDULER_INTERVAL_SECONDS: "10"
+  REAPER_INTERVAL_SECONDS: "30"
+  STALE_WORKER_THRESHOLD_SECONDS: "15"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: codity-secrets
+  namespace: codity
+type: Opaque
+stringData:
+  DATABASE_URL: "postgresql+psycopg2://postgres:YOUR_DB_PASSWORD@postgres-service:5432/scheduler_db"
+  REDIS_URL: "redis://redis-service:6379/0"
+  JWT_SECRET_KEY: "GENERATE_A_LONG_SECURE_RANDOM_SECRET_KEY_HERE"
+---
+# ─── API Control Plane Deployment ──────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: codity-api
+  namespace: codity
+  labels:
+    app: codity-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: codity-api
+  template:
+    metadata:
+      labels:
+        app: codity-api
+    spec:
+      containers:
+        - name: api
+          image: codity/codity-api:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4"
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: codity-config
+            - secretRef:
+                name: codity-secrets
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: codity-api-service
+  namespace: codity
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8000
+      targetPort: 8000
+  selector:
+    app: codity-api
+---
+# ─── Worker Cluster Deployment ─────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: codity-worker
+  namespace: codity
+  labels:
+    app: codity-worker
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: codity-worker
+  template:
+    metadata:
+      labels:
+        app: codity-worker
+    spec:
+      containers:
+        - name: worker
+          image: codity/codity-api:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - python
+            - -m
+            - app.workers.main_worker
+            - --queue-id
+            - 00000000-0000-0000-0000-000000000000
+          envFrom:
+            - configMapRef:
+                name: codity-config
+            - secretRef:
+                name: codity-secrets
+---
+# ─── Leader Scheduler (Single Replica Required) ───────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: codity-leader
+  namespace: codity
+  labels:
+    app: codity-leader
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: codity-leader
+  template:
+    metadata:
+      labels:
+        app: codity-leader
+    spec:
+      containers:
+        - name: leader
+          image: codity/codity-api:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - python
+            - -m
+            - app.workers.scheduler
+            - --interval
+            - "10"
+          envFrom:
+            - configMapRef:
+                name: codity-config
+            - secretRef:
+                name: codity-secrets
+---
+# ─── Reaper Service (Single Replica Required) ──────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: codity-reaper
+  namespace: codity
+  labels:
+    app: codity-reaper
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: codity-reaper
+  template:
+    metadata:
+      labels:
+        app: codity-reaper
+    spec:
+      containers:
+        - name: reaper
+          image: codity/codity-api:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - python
+            - -m
+            - app.workers.reaper
+            - --interval
+            - "30"
+            - --threshold
+            - "15"
+          envFrom:
+            - configMapRef:
+                name: codity-config
+            - secretRef:
+                name: codity-secrets
+---
+# ─── Frontend Dashboard Deployment ─────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: codity-frontend
+  namespace: codity
+  labels:
+    app: codity-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: codity-frontend
+  template:
+    metadata:
+      labels:
+        app: codity-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: codity/codity-frontend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: codity-frontend-service
+  namespace: codity
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 80
+      targetPort: 80
+  selector:
+    app: codity-frontend

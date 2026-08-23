@@ -1,0 +1,174 @@
+# ==============================================================================
+# Codity — Production Docker Compose Manifest
+# Suitable for Single-Host Cloud Deployments (AWS EC2, GCP Compute, DigitalOcean)
+# ==============================================================================
+services:
+  # ─── 1. PostgreSQL Relational Store ──────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: codity_postgres_prod
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-scheduler_db}
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-scheduler_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ─── 2. Redis Cache & Idempotency Store ─────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: codity_redis_prod
+    restart: always
+    command: redis-server --save 60 1 --loglevel warning --requirepass ${REDIS_PASSWORD:-""}
+    volumes:
+      - redis_prod_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ─── 3. FastAPI Core Control Plane ───────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ${DOCKER_REGISTRY:-codity}/codity-api:${IMAGE_TAG:-latest}
+    container_name: codity_api_prod
+    restart: always
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4"
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
+      - JWT_ACCESS_TOKEN_EXPIRE_MINUTES=${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:-60}
+      - APP_ENV=production
+      - DEBUG=false
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+  # ─── 4. Distributed Worker Node (Scale with --scale worker=N) ───────────
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ${DOCKER_REGISTRY:-codity}/codity-api:${IMAGE_TAG:-latest}
+    restart: always
+    command: python -m app.workers.main_worker --queue-id 00000000-0000-0000-0000-000000000000
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - POLL_INTERVAL_SECONDS=${POLL_INTERVAL_SECONDS:-2}
+      - HEARTBEAT_INTERVAL_SECONDS=${HEARTBEAT_INTERVAL_SECONDS:-5}
+      - APP_ENV=production
+    depends_on:
+      api:
+        condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+  # ─── 5. Distributed Scheduler Engine (Single Leader Instance) ───────────
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ${DOCKER_REGISTRY:-codity}/codity-api:${IMAGE_TAG:-latest}
+    container_name: codity_leader_prod
+    restart: always
+    command: python -m app.workers.scheduler --interval 10
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - SCHEDULER_INTERVAL_SECONDS=${SCHEDULER_INTERVAL_SECONDS:-10}
+      - APP_ENV=production
+    depends_on:
+      api:
+        condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ─── 6. Stale Job & Dead Worker Reaper ──────────────────────────────────
+  reaper:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ${DOCKER_REGISTRY:-codity}/codity-api:${IMAGE_TAG:-latest}
+    container_name: codity_reaper_prod
+    restart: always
+    command: python -m app.workers.reaper --interval 30 --threshold 15
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REAPER_INTERVAL_SECONDS=${REAPER_INTERVAL_SECONDS:-30}
+      - STALE_WORKER_THRESHOLD_SECONDS=${STALE_WORKER_THRESHOLD_SECONDS:-15}
+      - APP_ENV=production
+    depends_on:
+      api:
+        condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ─── 7. React Frontend Web Application ─────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: ${DOCKER_REGISTRY:-codity}/codity-frontend:${IMAGE_TAG:-latest}
+    container_name: codity_frontend_prod
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  postgres_prod_data:
+  redis_prod_data:

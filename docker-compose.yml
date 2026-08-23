@@ -1,0 +1,147 @@
+services:
+  # ─── 1. Primary Relational Store ──────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: scheduler_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-scheduler_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d scheduler_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ─── 2. Redis In-Memory Cache (Idempotency) ───────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: scheduler_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ─── 3. FastAPI Core Backend ──────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: scheduler_api
+    restart: unless-stopped
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://postgres:postgres@postgres:5432/scheduler_db
+      - REDIS_URL=redis://redis:6379/0
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-super-secret-change-in-production}
+      - APP_ENV=production
+      - DEBUG=false
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── 4. Distributed Worker Nodes ──────────────────────────────
+  worker_1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: scheduler_worker_1
+    restart: unless-stopped
+    command: python -m app.workers.main_worker --queue-id 00000000-0000-0000-0000-000000000000
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://postgres:postgres@postgres:5432/scheduler_db
+      - REDIS_URL=redis://redis:6379/0
+      - POLL_INTERVAL_SECONDS=2
+      - HEARTBEAT_INTERVAL_SECONDS=5
+      - WORKER_HOSTNAME=codity-worker-node-1
+    depends_on:
+      api:
+        condition: service_healthy
+
+  worker_2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: scheduler_worker_2
+    restart: unless-stopped
+    command: python -m app.workers.main_worker --queue-id 00000000-0000-0000-0000-000000000000
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://postgres:postgres@postgres:5432/scheduler_db
+      - REDIS_URL=redis://redis:6379/0
+      - POLL_INTERVAL_SECONDS=2
+      - HEARTBEAT_INTERVAL_SECONDS=5
+      - WORKER_HOSTNAME=codity-worker-node-2
+    depends_on:
+      api:
+        condition: service_healthy
+
+  # ─── 5. Distributed Scheduler Engine (Leader Election) ────────
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: scheduler_leader
+    restart: unless-stopped
+    command: python -m app.workers.scheduler --interval 10
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://postgres:postgres@postgres:5432/scheduler_db
+      - REDIS_URL=redis://redis:6379/0
+      - SCHEDULER_INTERVAL_SECONDS=10
+    depends_on:
+      api:
+        condition: service_healthy
+
+  # ─── 6. Stale Job & Dead Worker Reaper ────────────────────────
+  reaper:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: scheduler_reaper
+    restart: unless-stopped
+    command: python -m app.workers.reaper --interval 30 --threshold 15
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://postgres:postgres@postgres:5432/scheduler_db
+      - REAPER_INTERVAL_SECONDS=30
+      - STALE_WORKER_THRESHOLD_SECONDS=15
+    depends_on:
+      api:
+        condition: service_healthy
+
+  # ─── 7. React Frontend Dashboard ──────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: scheduler_frontend
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
+  redis_data:
