@@ -144,10 +144,13 @@ def login(
     Returns JWT access token along with user profile metadata.
     """
     user = db.query(User).filter(User.email == user_in.email).first()
-    if not user or not verify_password(user_in.password, user.hashed_password):
+    if not user or not user.hashed_password or not verify_password(user_in.password, user.hashed_password):
+        detail_msg = "Incorrect email or password"
+        if user and not user.hashed_password and user.oauth_provider:
+            detail_msg = f"This account was registered via {user.oauth_provider.capitalize()}. Please click 'Continue with Google' to log in."
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
+            detail=detail_msg,
             headers={"WWW-Authenticate": "Bearer"},
         )
 

@@ -122,3 +122,26 @@ def test_oauth_login_invalid_provider(client: TestClient):
     assert response.status_code == 400
     assert "Unsupported OAuth provider" in response.json()["detail"]
 
+
+def test_oauth_user_password_login_returns_401(client: TestClient):
+    """Test that a user registered via OAuth attempting password login receives a 401 instead of 500 error."""
+    oauth_email = f"oauth_pwd_check_{uuid.uuid4().hex[:6]}@google.com"
+    oauth_payload = {
+        "provider": "google",
+        "email": oauth_email,
+        "full_name": "OAuth User Test",
+        "code": "test_code_123",
+    }
+    res_oauth = client.post("/api/v1/auth/oauth/login", json=oauth_payload)
+    assert res_oauth.status_code == 200
+
+    # Attempt regular password login on the OAuth account
+    pwd_login_payload = {
+        "email": oauth_email,
+        "password": "SomeRandomPassword123!",
+    }
+    res_login = client.post("/api/v1/auth/login", json=pwd_login_payload)
+    assert res_login.status_code == 401
+    assert "registered via Google" in res_login.json()["detail"]
+
+

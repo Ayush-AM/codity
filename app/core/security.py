@@ -31,13 +31,15 @@ def get_password_hash(password: str) -> str:
     return bcrypt.hashpw(pwd_bytes, salt).decode("utf-8")
 
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
+def verify_password(plain_password: str, hashed_password: str | None) -> bool:
     """Verify a plaintext password against its Bcrypt hash."""
+    if not hashed_password or not plain_password:
+        return False
     pwd_bytes = plain_password.encode("utf-8")[:72]
     hashed_bytes = hashed_password.encode("utf-8")
     try:
         return bcrypt.checkpw(pwd_bytes, hashed_bytes)
-    except ValueError:
+    except Exception:
         return False
 
 
