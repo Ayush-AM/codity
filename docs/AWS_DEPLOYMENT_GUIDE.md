@@ -74,6 +74,21 @@ flowchart TD
 
 ---
 
+## 🔐 Google OAuth 2.0 Configuration
+
+Codity supports single sign-on (SSO) via Google OAuth. To enable this in production, you must set the following environment variables on the EC2 server in a `.env` file located in the root of the cloned repository:
+
+```env
+GOOGLE_CLIENT_ID="<your-google-client-id>.apps.googleusercontent.com"
+GOOGLE_CLIENT_SECRET="<your-google-client-secret>"
+OAUTH_REDIRECT_URI="http://3.7.73.152:8000/api/v1/auth/oauth/callback/google"
+CORS_ORIGINS="http://localhost:5173,http://127.0.0.1:5173,http://3.7.73.152,http://3.7.73.152:80"
+```
+
+> **Important:** The `OAUTH_REDIRECT_URI` must exactly match the authorized redirect URI configured in your Google Cloud Console.
+
+---
+
 ## 📦 Container Registry (AWS ECR URIs)
 
 Both application layers are built into standalone Docker images and stored in AWS ECR:
@@ -138,6 +153,18 @@ chmod +x /usr/libexec/docker/cli-plugins/docker-compose
 cd /home/ec2-user
 git clone https://github.com/Ayush-AM/codity.git
 cd codity
+
+# Create Production .env file
+cat <<EOF > .env
+POSTGRES_USER=codity_user
+POSTGRES_PASSWORD=codity_password
+POSTGRES_DB=codity_db
+SECRET_KEY=supersecretkey_change_in_production
+GOOGLE_CLIENT_ID="your_google_client_id_here"
+GOOGLE_CLIENT_SECRET="your_google_client_secret_here"
+OAUTH_REDIRECT_URI="http://3.7.73.152:8000/api/v1/auth/oauth/callback/google"
+CORS_ORIGINS="http://localhost:5173,http://127.0.0.1:5173,http://3.7.73.152,http://3.7.73.152:80"
+EOF
 
 # Authenticate Docker & Start Containers
 aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 206690614418.dkr.ecr.ap-south-1.amazonaws.com

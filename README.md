@@ -92,15 +92,19 @@ The fastest way to spin up the entire cluster locally:
 git clone https://github.com/Ayush-AM/codity.git
 cd codity
 
-# 2. Build and launch all microservices in detached mode
+# 2. Configure Environment Variables
+cp .env.example .env
+# Add GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and OAUTH_REDIRECT_URI to the .env file
+
+# 3. Build and launch all microservices in detached mode
 docker compose up --build -d
 
-# 3. Stream backend logs
+# 4. Stream backend logs
 docker compose logs -f api
 ```
 
 ### Access URLs (Local):
-* **Frontend Dashboard:** [http://localhost:5173](http://localhost:5173) (Default Admin: `admin@example.com` / `StrongP@ss123`)
+* **Frontend Dashboard:** [http://localhost:5173](http://localhost:5173) (Sign in via Google OAuth or standard email)
 * **Interactive Swagger Docs:** [http://localhost:8000/docs](http://localhost:8000/docs)
 * **ReDoc Documentation:** [http://localhost:8000/redoc](http://localhost:8000/redoc)
 * **PgAdmin Web Management:** [http://localhost:5050](http://localhost:5050)
@@ -182,7 +186,7 @@ Output:
 | :--- | :--- | :--- |
 | `POST` | `/api/v1/auth/register` | Register new organization & root admin |
 | `POST` | `/api/v1/auth/login` | Authenticate and obtain JWT bearer token |
-| `GET`  | `/api/v1/auth/oauth/url/{provider}` | Retrieve OAuth 2.0 authorization redirect URL (Google / GitHub) |
+| `GET`  | `/api/v1/auth/oauth/url/{provider}` | Retrieve OAuth 2.0 authorization redirect URL (Google) |
 | `POST` | `/api/v1/auth/oauth/login` | Authenticate or auto-register user via OAuth 2.0 token/code |
 | `POST` | `/api/v1/projects/{id}/queues` | Create isolated queue partition |
 | `POST` | `/api/v1/queues/{id}/jobs` | Submit immediate, delayed, or cron job (supports `Idempotency-Key`) |
