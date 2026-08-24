@@ -30,7 +30,7 @@ export const AuthCallback: React.FC = () => {
 
         localStorage.setItem('token', res.access_token);
         localStorage.setItem('user', JSON.stringify(res.user));
-        window.location.href = '/dashboard';
+        navigate('/dashboard', { replace: true });
       } catch (err: any) {
         const msg =
           err.response?.data?.detail ||

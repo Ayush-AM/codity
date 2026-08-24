@@ -61,7 +61,7 @@ export const Login: React.FC = () => {
     try {
       if (!isRegister) {
         await login({ email, password });
-        navigate('/dashboard');
+        navigate('/dashboard', { replace: true });
       } else {
         const res = await authApi.register({
           email,
@@ -247,26 +247,6 @@ export const Login: React.FC = () => {
                 ),
               }}
             />
-
-            {isRegister && (
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={termsAccepted}
-                    onChange={(e) => setTermsAccepted(e.target.checked)}
-                    sx={{
-                      color: '#94a3b8',
-                      '&.Mui-checked': { color: '#00ffc2' },
-                    }}
-                  />
-                }
-                label={
-                  <Typography sx={{ color: '#94a3b8', fontSize: '0.82rem', fontFamily: 'var(--font-mono)' }}>
-                    I accept the terms of service and multi-tenant security policies.
-                  </Typography>
-                }
-              />
-            )}
 
             <Button
               type="submit"
