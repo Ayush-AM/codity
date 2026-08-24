@@ -1,3 +1,4 @@
+// Updated with OAuth Buttons
 import React, { useState } from 'react';
 import {
   Box,
@@ -10,12 +11,15 @@ import {
   InputAdornment,
   IconButton,
   CircularProgress,
+  Divider,
 } from '@mui/material';
 import {
   Visibility,
   VisibilityOff,
   AutoAwesome,
   FlashOn,
+  GitHub,
+  Google,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
@@ -34,6 +38,19 @@ export const Login: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  const handleOAuthLogin = async (provider: 'google' | 'github') => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await authApi.getOAuthUrl(provider);
+      window.location.href = res.authorize_url;
+    } catch (err: any) {
+      const msg = err.response?.data?.detail || 'Failed to initialize OAuth authorization.';
+      setError(msg);
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -280,6 +297,63 @@ export const Login: React.FC = () => {
               {loading ? <CircularProgress size={22} sx={{ color: '#111317' }} /> : (isRegister ? 'Register Organization & Account' : 'Sign In')}
             </Button>
 
+            <Divider
+              sx={{
+                my: 1.5,
+                borderColor: '#37393e',
+                color: '#94a3b8',
+                fontSize: '0.75rem',
+                fontFamily: 'var(--font-mono)',
+                letterSpacing: '0.05em',
+              }}
+            >
+              OR CONTINUE WITH OAUTH
+            </Divider>
+
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <Button
+                variant="outlined"
+                fullWidth
+                disabled={loading}
+                onClick={() => handleOAuthLogin('google')}
+                startIcon={<Google sx={{ color: '#ea4335' }} />}
+                sx={{
+                  color: '#ffffff',
+                  borderColor: '#37393e',
+                  borderRadius: '4px',
+                  textTransform: 'none',
+                  fontWeight: 700,
+                  fontFamily: 'var(--font-mono)',
+                  py: 1.2,
+                  bgcolor: '#181A20',
+                  '&:hover': { borderColor: '#ea4335', bgcolor: 'rgba(234, 67, 53, 0.08)' }
+                }}
+              >
+                Google
+              </Button>
+
+              <Button
+                variant="outlined"
+                fullWidth
+                disabled={loading}
+                onClick={() => handleOAuthLogin('github')}
+                startIcon={<GitHub sx={{ color: '#ffffff' }} />}
+                sx={{
+                  color: '#ffffff',
+                  borderColor: '#37393e',
+                  borderRadius: '4px',
+                  textTransform: 'none',
+                  fontWeight: 700,
+                  fontFamily: 'var(--font-mono)',
+                  py: 1.2,
+                  bgcolor: '#181A20',
+                  '&:hover': { borderColor: '#ffffff', bgcolor: 'rgba(255, 255, 255, 0.08)' }
+                }}
+              >
+                GitHub
+              </Button>
+            </Box>
+
             <Button
               variant="outlined"
               onClick={fillAdminCredentials}
@@ -306,3 +380,5 @@ export const Login: React.FC = () => {
     </Box>
   );
 };
+
+export default Login;

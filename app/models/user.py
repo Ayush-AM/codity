@@ -7,7 +7,7 @@ Users belong to an organization and carry a role (admin / member).
 from __future__ import annotations
 
 import enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import Boolean, Enum, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
@@ -37,7 +37,7 @@ class User(BaseModel, Base):
     )
 
     email: Mapped[str] = mapped_column(String(320), unique=True, nullable=False, index=True)
-    hashed_password: Mapped[str] = mapped_column(String(1024), nullable=False)
+    hashed_password: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[UserRole] = mapped_column(
         Enum(UserRole, name="user_role", create_constraint=True),
@@ -45,6 +45,9 @@ class User(BaseModel, Base):
         nullable=False,
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+    oauth_provider: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, index=True)
+    oauth_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)
 
     # ------------------------------------------------------------------
     # Relationships

@@ -29,6 +29,20 @@ export interface RegisterPayload {
   organization_name: string;
 }
 
+export interface OAuthLoginPayload {
+  provider: string;
+  code?: string;
+  access_token?: string;
+  id_token?: string;
+  email?: string;
+  full_name?: string;
+}
+
+export interface OAuthUrlResponse {
+  provider: string;
+  authorize_url: string;
+}
+
 export const authApi = {
   login: async (data: LoginPayload): Promise<AuthResponse> => {
     const res = await apiClient.post<AuthResponse>('/auth/login', data);
@@ -37,6 +51,16 @@ export const authApi = {
 
   register: async (data: RegisterPayload): Promise<AuthResponse> => {
     const res = await apiClient.post<AuthResponse>('/auth/register', data);
+    return res.data;
+  },
+
+  oauthLogin: async (data: OAuthLoginPayload): Promise<AuthResponse> => {
+    const res = await apiClient.post<AuthResponse>('/auth/oauth/login', data);
+    return res.data;
+  },
+
+  getOAuthUrl: async (provider: string): Promise<OAuthUrlResponse> => {
+    const res = await apiClient.get<OAuthUrlResponse>(`/auth/oauth/url/${provider}`);
     return res.data;
   },
 

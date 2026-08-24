@@ -41,13 +41,13 @@ This document records the completed engineering milestones, system features, and
 
 ## Verification & Test Suite Status
 
-* **Automated Tests**: 37 / 37 Pytest test cases passing cleanly.
+* **Automated Tests**: 41 / 41 Pytest test cases passing cleanly.
 * **Build Verification**: Vite production bundle compiled with zero warnings/errors.
-* **Docker Verification**: All 8 container services running healthy.
+* **Docker Verification**: All container services running healthy.
 
-### Test Suite Breakdown (37 / 37 Passing)
+### Test Suite Breakdown (41 / 41 Passing)
 
-1. **Authentication & Multi-Tenancy (4 Tests)**: `test_register_new_tenant`, `test_login_success`, `test_login_invalid_password`, `test_protected_route_with_and_without_token`.
+1. **Authentication, Multi-Tenancy & OAuth (8 Tests)**: `test_register_new_tenant`, `test_login_success`, `test_login_invalid_password`, `test_protected_route_with_and_without_token`, `test_get_oauth_url`, `test_oauth_login_new_user`, `test_oauth_login_existing_user`, `test_oauth_login_invalid_provider`.
 2. **Atomic Concurrency & Worker Claiming (4 Tests)**: `test_concurrent_atomic_claims`, `test_atomic_claim_jobs`, `test_worker_heartbeat_lifecycle`, `test_postgresql_advisory_locks`.
 3. **Job Scheduling & Cron Evaluation (5 Tests)**: `test_submit_immediate_job`, `test_create_delayed_job`, `test_scheduler_promotes_delayed_jobs`, `test_submit_cron_job`, `test_scheduler_evaluates_cron_templates`.
 4. **Retry Engine & Backoff Math (8 Tests)**: `test_fixed_retry_delay`, `test_linear_retry_delay`, `test_exponential_retry_delay_with_cap`, `test_exponential_retry_delay_with_jitter`, `test_calculate_retry_delay_fixed`, `test_calculate_retry_delay_linear`, `test_calculate_retry_delay_exponential`, `test_calculate_retry_delay_maxed`.

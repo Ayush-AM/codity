@@ -7,7 +7,8 @@ import { AuthProvider } from './context/AuthContext';
 import { PrivateRoute } from './components/PrivateRoute';
 import { Layout } from './components/Layout';
 
-const Login = lazy(() => import('./pages/Login').then((module) => ({ default: module.Login })));
+const Login = lazy(() => import('./pages/Login'));
+const AuthCallback = lazy(() => import('./pages/AuthCallback'));
 const Dashboard = lazy(() => import('./pages/Dashboard').then((module) => ({ default: module.Dashboard })));
 const Jobs = lazy(() => import('./pages/Jobs').then((module) => ({ default: module.Jobs })));
 const Queues = lazy(() => import('./pages/Queues').then((module) => ({ default: module.Queues })));
@@ -174,8 +175,9 @@ export const App: React.FC = () => {
               }
             >
               <Routes>
-                {/* Public route */}
+                {/* Public routes */}
                 <Route path="/login" element={<Login />} />
+                <Route path="/auth/callback" element={<AuthCallback />} />
 
                 {/* Protected dashboard routes */}
                 <Route element={<PrivateRoute />}>

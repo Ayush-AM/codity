@@ -60,3 +60,65 @@ def test_protected_route_with_and_without_token(client: TestClient, auth_headers
     res_auth = client.get("/api/v1/protected", headers=auth_headers)
     assert res_auth.status_code == 200
     assert "email" in res_auth.json()
+
+
+def test_get_oauth_url(client: TestClient):
+    """Test retrieving OAuth authorization URLs for Google and GitHub."""
+    res_google = client.get("/api/v1/auth/oauth/url/google")
+    assert res_google.status_code == 200
+    data_google = res_google.json()
+    assert data_google["provider"] == "google"
+    assert "authorize_url" in data_google
+
+    res_github = client.get("/api/v1/auth/oauth/url/github")
+    assert res_github.status_code == 200
+    data_github = res_github.json()
+    assert data_github["provider"] == "github"
+    assert "authorize_url" in data_github
+
+
+def test_oauth_login_new_user(client: TestClient):
+    """Test OAuth login auto-registering new organization and admin user."""
+    oauth_email = f"oauth_new_{uuid.uuid4().hex[:6]}@google.com"
+    payload = {
+        "provider": "google",
+        "email": oauth_email,
+        "full_name": "OAuth Google User",
+        "code": f"code_new_{uuid.uuid4().hex[:6]}",
+    }
+    response = client.post("/api/v1/auth/oauth/login", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert "access_token" in data
+    assert data["token_type"] == "bearer"
+    assert data["user"]["email"] == oauth_email
+    assert data["user"]["role"] == "admin"
+    assert data["user"]["oauth_provider"] == "google"
+
+
+def test_oauth_login_existing_user(client: TestClient, sample_user: User):
+    """Test OAuth login linking and logging in an existing user by email."""
+    payload = {
+        "provider": "github",
+        "email": sample_user.email,
+        "full_name": sample_user.full_name,
+        "code": f"code_exist_{uuid.uuid4().hex[:6]}",
+    }
+    response = client.post("/api/v1/auth/oauth/login", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert "access_token" in data
+    assert data["user"]["email"] == sample_user.email
+    assert data["user"]["oauth_provider"] == "github"
+
+
+def test_oauth_login_invalid_provider(client: TestClient):
+    """Test OAuth login with unsupported provider returns 400."""
+    payload = {
+        "provider": "unsupported_provider",
+        "email": "test@example.com",
+    }
+    response = client.post("/api/v1/auth/oauth/login", json=payload)
+    assert response.status_code == 400
+    assert "Unsupported OAuth provider" in response.json()["detail"]
+

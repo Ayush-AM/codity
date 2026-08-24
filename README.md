@@ -182,6 +182,8 @@ Output:
 | :--- | :--- | :--- |
 | `POST` | `/api/v1/auth/register` | Register new organization & root admin |
 | `POST` | `/api/v1/auth/login` | Authenticate and obtain JWT bearer token |
+| `GET`  | `/api/v1/auth/oauth/url/{provider}` | Retrieve OAuth 2.0 authorization redirect URL (Google / GitHub) |
+| `POST` | `/api/v1/auth/oauth/login` | Authenticate or auto-register user via OAuth 2.0 token/code |
 | `POST` | `/api/v1/projects/{id}/queues` | Create isolated queue partition |
 | `POST` | `/api/v1/queues/{id}/jobs` | Submit immediate, delayed, or cron job (supports `Idempotency-Key`) |
 | `GET`  | `/api/v1/jobs/` | Explorer with multi-tenant filtering and text search |

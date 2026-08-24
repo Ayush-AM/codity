@@ -38,6 +38,24 @@ class UserAddMember(BaseModel):
     role: str = Field(default="member", pattern="^(admin|member)$")
 
 
+class OAuthLoginRequest(BaseModel):
+    """Payload for OAuth login / token verification."""
+
+    provider: str = Field(..., description="OAuth provider: google, github, etc.")
+    code: str | None = Field(default=None, description="Authorization code from provider redirect")
+    access_token: str | None = Field(default=None, description="OAuth access token")
+    id_token: str | None = Field(default=None, description="OAuth ID token")
+    email: EmailStr | None = Field(default=None, description="Optional user email for mock/testing mode")
+    full_name: str | None = Field(default=None, description="Optional user full name for mock/testing mode")
+
+
+class OAuthAuthorizeUrlResponse(BaseModel):
+    """Response containing authorization URL for specified provider."""
+
+    provider: str
+    authorize_url: str
+
+
 # ---------------------------------------------------------------------------
 # Response schemas
 # ---------------------------------------------------------------------------
@@ -50,6 +68,7 @@ class UserResponse(BaseModel):
     role: str
     is_active: bool
     organization_id: uuid.UUID
+    oauth_provider: str | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
