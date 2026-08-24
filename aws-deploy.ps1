@@ -4,7 +4,7 @@ param(
     [string]$AccountId = ""
 )
 
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = "Continue"
 
 Write-Host "=========================================" -ForegroundColor Cyan
 Write-Host " 🚀 Codity AWS ECR Build & Push Tool" -ForegroundColor Cyan
