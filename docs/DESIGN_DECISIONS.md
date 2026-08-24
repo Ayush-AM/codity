@@ -60,3 +60,12 @@ This document outlines the major architectural trade-offs, design choices, and t
 * **Decision**: All resources are strictly scoped under `Organizations` → `Projects` → `Queues` → `Jobs`.
 * **Rationale**:
   * Enforces hard multi-tenant boundaries suitable for enterprise SaaS applications. JWT bearer tokens carry the user's `organization_id`, preventing cross-tenant data leakage.
+
+---
+
+## 7. Single Sign-On (SSO) & Domain Resolution
+
+* **Decision**: Codity exclusively uses Google OAuth 2.0 for user authentication, deprecating manual username/password and Github auth entirely for production. 
+* **Rationale**:
+  * Offloading authentication to Google ensures enterprise-grade security and zero liability regarding password breaches. 
+  * **Domain Mapping**: To support secure OAuth callbacks, we mapped the raw AWS EC2 IP (`3.7.73.152`) to the `sslip.io` service (`3.7.73.152.sslip.io`). Google Cloud Console strictly forbids raw IP addresses in Production Authorized Redirect URIs; utilizing `sslip.io` elegantly satisfied this constraint without requiring manual DNS configuration.

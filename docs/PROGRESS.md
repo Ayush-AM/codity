@@ -35,7 +35,7 @@ This document records the completed engineering milestones, system features, and
 ### 6. Cloud-Native & Kubernetes Infrastructure
 - Single-command Docker Compose orchestrator (`docker-compose.yml` and `docker-compose.prod.yml`).
 - Production Kubernetes manifest (`k8s/codity-all-in-one.yaml`).
-- Universal Cloud Deployment Manual (`docs/CLOUD_DEPLOYMENT.md`).
+- Production AWS EC2 Deployment Guide (`docs/AWS_DEPLOYMENT_GUIDE.md`).
 
 ### 7. Google OAuth & Production UI Polish
 - End-to-end Single Sign-On (SSO) integration using Google OAuth 2.0.
