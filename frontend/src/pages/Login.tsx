@@ -16,7 +16,6 @@ import {
 import {
   Visibility,
   VisibilityOff,
-  AutoAwesome,
   FlashOn,
   Google,
 } from '@mui/icons-material';
@@ -84,11 +83,6 @@ export const Login: React.FC = () => {
     }
   };
 
-  const fillAdminCredentials = () => {
-    setEmail('admin@example.com');
-    setPassword('StrongP@ss123');
-    setIsRegister(false);
-  };
 
   const inputSx = {
     '& .MuiOutlinedInput-root': {
@@ -333,26 +327,6 @@ export const Login: React.FC = () => {
 
             </Box>
 
-            <Button
-              variant="outlined"
-              onClick={fillAdminCredentials}
-              startIcon={<AutoAwesome sx={{ color: '#00ffc2' }} />}
-              sx={{
-                color: '#ffffff',
-                borderColor: '#37393e',
-                borderRadius: '4px',
-                textTransform: 'none',
-                fontWeight: 700,
-                fontFamily: 'var(--font-mono)',
-                py: 1.2,
-                mt: 1,
-                boxShadow: 'none',
-                bgcolor: '#181A20',
-                '&:hover': { borderColor: '#00ffc2', color: '#00ffc2', bgcolor: '#181A20', boxShadow: 'none' }
-              }}
-            >
-              Autofill Demo Admin Credentials
-            </Button>
           </Box>
         </Box>
       </Box>
