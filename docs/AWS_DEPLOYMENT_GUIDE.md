@@ -6,10 +6,10 @@ This document provides a comprehensive operational guide for the production depl
 
 ## 🌐 Live Production Deployment Overview
 
-- 🖥️ **Web Dashboard (React SPA)**: [http://3.7.73.152](http://3.7.73.152)
-- ⚙️ **API Control Plane (FastAPI)**: [http://3.7.73.152:8000](http://3.7.73.152:8000)
-- 💚 **Live Health Check Endpoint**: [http://3.7.73.152:8000/health/ready](http://3.7.73.152:8000/health/ready)
-- 📚 **Swagger API Documentation**: [http://3.7.73.152:8000/docs](http://3.7.73.152:8000/docs)
+- 🖥️ **Web Dashboard (React SPA)**: [http://3.7.73.152.sslip.io](http://3.7.73.152.sslip.io)
+- ⚙️ **API Control Plane (FastAPI)**: [http://3.7.73.152.sslip.io:8000](http://3.7.73.152.sslip.io:8000)
+- 💚 **Live Health Check Endpoint**: [http://3.7.73.152.sslip.io:8000/health/ready](http://3.7.73.152.sslip.io:8000/health/ready)
+- 📚 **Swagger API Documentation**: [http://3.7.73.152.sslip.io:8000/docs](http://3.7.73.152.sslip.io:8000/docs)
 - 📦 **GitHub Repository**: [https://github.com/Ayush-AM/codity](https://github.com/Ayush-AM/codity)
 
 ---
@@ -81,8 +81,8 @@ Codity supports single sign-on (SSO) via Google OAuth. To enable this in product
 ```env
 GOOGLE_CLIENT_ID="<your-google-client-id>.apps.googleusercontent.com"
 GOOGLE_CLIENT_SECRET="<your-google-client-secret>"
-OAUTH_REDIRECT_URI="http://3.7.73.152:8000/api/v1/auth/oauth/callback/google"
-CORS_ORIGINS="http://localhost:5173,http://127.0.0.1:5173,http://3.7.73.152,http://3.7.73.152:80"
+OAUTH_REDIRECT_URI="http://3.7.73.152.sslip.io:8000/api/v1/auth/oauth/callback/google"
+CORS_ORIGINS="http://localhost:5173,http://127.0.0.1:5173,http://3.7.73.152,http://3.7.73.152.sslip.io"
 ```
 
 > **Important:** The `OAUTH_REDIRECT_URI` must exactly match the authorized redirect URI configured in your Google Cloud Console.
@@ -162,8 +162,8 @@ POSTGRES_DB=codity_db
 SECRET_KEY=supersecretkey_change_in_production
 GOOGLE_CLIENT_ID="your_google_client_id_here"
 GOOGLE_CLIENT_SECRET="your_google_client_secret_here"
-OAUTH_REDIRECT_URI="http://3.7.73.152:8000/api/v1/auth/oauth/callback/google"
-CORS_ORIGINS="http://localhost:5173,http://127.0.0.1:5173,http://3.7.73.152,http://3.7.73.152:80"
+OAUTH_REDIRECT_URI="http://3.7.73.152.sslip.io:8000/api/v1/auth/oauth/callback/google"
+CORS_ORIGINS="http://localhost:5173,http://127.0.0.1:5173,http://3.7.73.152,http://3.7.73.152.sslip.io"
 EOF
 
 # Authenticate Docker & Start Containers
@@ -180,10 +180,10 @@ To verify the live server status from any terminal:
 
 ```bash
 # Check Frontend status
-curl -I http://3.7.73.152
+curl -I http://3.7.73.152.sslip.io
 
 # Check Backend readiness probe
-curl http://3.7.73.152:8000/health/ready
+curl http://3.7.73.152.sslip.io:8000/health/ready
 ```
 
 Expected Output:

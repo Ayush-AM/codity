@@ -10,10 +10,10 @@ Engineered for ultra-high reliability, multi-tenant isolation, sub-millisecond c
 
 Codity is fully deployed and running live on AWS in Mumbai:
 
-- 🖥️ **Web Dashboard (Frontend UI)**: [http://3.7.73.152](http://3.7.73.152)
-- ⚙️ **API Control Plane (Backend)**: [http://3.7.73.152:8000](http://3.7.73.152:8000)
-- 💚 **Live Health Readiness Probe**: [http://3.7.73.152:8000/health/ready](http://3.7.73.152:8000/health/ready)
-- 📚 **Swagger API Docs**: [http://3.7.73.152:8000/docs](http://3.7.73.152:8000/docs)
+- 🖥️ **Web Dashboard (Frontend UI)**: [http://3.7.73.152.sslip.io](http://3.7.73.152.sslip.io)
+- ⚙️ **API Control Plane (Backend)**: [http://3.7.73.152.sslip.io:8000](http://3.7.73.152.sslip.io:8000)
+- 💚 **Live Health Readiness Probe**: [http://3.7.73.152.sslip.io:8000/health/ready](http://3.7.73.152.sslip.io:8000/health/ready)
+- 📚 **Swagger API Docs**: [http://3.7.73.152.sslip.io:8000/docs](http://3.7.73.152.sslip.io:8000/docs)
 - 📦 **Container Registry (AWS ECR)**: `206690614418.dkr.ecr.ap-south-1.amazonaws.com`
 
 ---

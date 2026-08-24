@@ -37,6 +37,12 @@ This document records the completed engineering milestones, system features, and
 - Production Kubernetes manifest (`k8s/codity-all-in-one.yaml`).
 - Universal Cloud Deployment Manual (`docs/CLOUD_DEPLOYMENT.md`).
 
+### 7. Google OAuth & Production UI Polish
+- End-to-end Single Sign-On (SSO) integration using Google OAuth 2.0.
+- Automatic routing mapping of EC2 IP to standard resolvable `sslip.io` domains to satisfy secure callback requirements.
+- Secure frontend history modification (`replace: true`) enforcing rigid login state loops.
+- Re-styled minimalistic Login component without dummy buttons or fake acceptance constraints.
+
 ---
 
 ## Verification & Test Suite Status
