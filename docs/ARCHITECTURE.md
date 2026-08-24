@@ -1,296 +1,159 @@
-# 🏛️ Codity — Enterprise Distributed Job Scheduling Platform Architecture
+# System Architecture & Database Schema
 
-## 1. Executive Summary & Core Philosophy
+This document outlines the complete system architecture and relational database schema for Codity. 
 
-**Codity** is a production-ready, highly available, multi-tenant distributed job scheduling and background processing platform. It is engineered to reliably route, execute, schedule, monitor, and retry background workloads at massive scale with zero job loss.
+## 1. Database Entity-Relationship (ER) Schema
 
-### Design Principles
-1. **Pull-Based Worker Model**: Eliminates message broker consumer bottlenecks by utilizing PostgreSQL row-level locks (`SELECT ... FOR UPDATE SKIP LOCKED`) for contention-free atomic task claiming.
-2. **Zero Third-Party Message Queue Overhead**: Eliminates external queue broker dependencies (like RabbitMQ or Celery) by maintaining the entire job state machine transactionally inside PostgreSQL.
-3. **Self-Healing Cluster Architecture**: Features automated leader election, stale worker reaping, intelligent exponential retry backoffs, and Dead Letter Queue (DLQ) isolation.
-4. **Strict Multi-Tenancy**: Scopes all operations hierarchically under `Organizations` → `Projects` → `Queues` → `Jobs`.
-
----
-
-## 2. High-Level System Architecture
+The platform relies on a heavily relational PostgreSQL structure optimized for hierarchical multi-tenancy, high-throughput job queueing, and atomic worker claiming.
 
 ```mermaid
-flowchart TB
-    subgraph Clients["Clients & Users"]
-        UI["React 18 / TypeScript Web Dashboard (Port 5173)"]
-        CLI["External REST API Clients / Microservices"]
-    end
+erDiagram
+    ORGANIZATION ||--o{ USER : "has many"
+    ORGANIZATION ||--o{ PROJECT : "has many"
+    PROJECT ||--o{ QUEUE : "contains"
+    QUEUE ||--o{ JOB : "enqueues"
+    QUEUE ||--o{ WORKER : "assigns"
+    WORKER ||--o{ JOB : "claims & processes"
+    WORKER ||--o{ JOB_EXECUTION : "executes"
+    JOB ||--o| DEAD_LETTER_ENTRY : "moves to (on exhaust)"
+    JOB ||--o{ JOB_EXECUTION : "has history of"
+    JOB ||--o{ JOB_LOG : "emits"
+    JOB ||--o{ JOB : "depends on (DAG)"
+    JOB ||--o{ JOB : "parent/child (Cron)"
 
-    subgraph ControlPlane["Control Plane & API Layer"]
-        API["FastAPI Control Plane (Port 8000)"]
-    end
+    ORGANIZATION {
+        UUID id PK
+        String name
+        String slug UK
+        DateTime created_at
+    }
 
-    subgraph DataStore["Transactional & Caching Data Plane"]
-        PG[("PostgreSQL 16\n(Primary Store & Atomic Queue)")]
-        REDIS[("Redis 7\n(Metrics Cache & Rate Limiter)")]
-    end
+    USER {
+        UUID id PK
+        UUID organization_id FK
+        String email UK
+        String full_name
+        Enum role "admin | member"
+        String oauth_provider
+    }
 
-    subgraph ComputeNodes["Distributed Worker Cluster"]
-        W1["Worker Node 1\n(Multithreaded Executor)"]
-        W2["Worker Node 2\n(Multithreaded Executor)"]
-        WN["Worker Node N\n(Scaled Instance)"]
-    end
+    PROJECT {
+        UUID id PK
+        UUID organization_id FK
+        String name
+        UUID api_key UK
+    }
 
-    subgraph Governance["Cluster Governance Services"]
-        LEADER["Leader Scheduler\n(Cron & Delayed Job Sweeper)"]
-        REAPER["Cluster Reaper\n(Heartbeat Monitor & Crash Recovery)"]
-    end
+    QUEUE {
+        UUID id PK
+        UUID project_id FK
+        String name
+        Integer priority
+        Integer concurrency_limit
+        JSONB retry_policy
+        Boolean is_paused
+    }
 
-    UI -->|HTTP / REST| API
-    CLI -->|HTTP / REST| API
-    API -->|SQL Read/Write| PG
-    API -->|Cache / Telemetry| REDIS
-    
-    W1 -->|Atomic Claim FOR UPDATE SKIP LOCKED| PG
-    W2 -->|Atomic Claim FOR UPDATE SKIP LOCKED| PG
-    WN -->|Atomic Claim FOR UPDATE SKIP LOCKED| PG
-    
-    W1 -->|Heartbeat Every 5s| PG
-    W2 -->|Heartbeat Every 5s| PG
-    WN -->|Heartbeat Every 5s| PG
+    WORKER {
+        UUID id PK
+        UUID queue_id FK
+        String hostname
+        Integer pid
+        DateTime last_heartbeat_at
+        Enum status "active | dead"
+    }
 
-    LEADER -->|Promote Scheduled Jobs| PG
-    REAPER -->|Reap Dead Workers & Reschedule Jobs| PG
+    JOB {
+        UUID id PK
+        UUID queue_id FK
+        UUID worker_id FK
+        UUID depends_on_job_id FK
+        UUID parent_job_id FK
+        Enum status "queued | running | failed | dead | etc"
+        JSONB payload
+        Integer priority
+        DateTime scheduled_at
+        String cron_expression
+        Integer retry_count
+        Integer max_retries
+    }
+
+    JOB_EXECUTION {
+        UUID id PK
+        UUID job_id FK
+        UUID worker_id FK
+        Enum status "running | completed | failed"
+        DateTime started_at
+        DateTime finished_at
+        Text error_message
+    }
+
+    JOB_LOG {
+        UUID id PK
+        UUID job_id FK
+        DateTime timestamp
+        Enum level "info | warning | error"
+        Text message
+        JSONB metadata
+    }
+
+    DEAD_LETTER_ENTRY {
+        UUID id PK
+        UUID job_id FK
+        DateTime failed_at
+        Text reason
+        JSONB final_payload
+    }
 ```
 
----
+## 2. Core Architectural Components & Data Flow
 
-## 3. Microservice Components & Cluster Roles
-
-The Codity platform runs as 8 decoupled services orchestrated seamlessly via Docker Compose:
-
-| Container Name | Technology | Role & Responsibility |
-| :--- | :--- | :--- |
-| **`scheduler_frontend`** | Nginx / React 18 / MUI | Serves the web dashboard for visual queue control, live job telemetry, and DLQ management on port `5173`. |
-| **`scheduler_api`** | Python 3.11 / FastAPI | REST Control Plane handling authentication, tenant isolation, queue configuration, and job submission on port `8000`. |
-| **`scheduler_postgres`** | PostgreSQL 16 (Alpine) | ACID relational state store holding queue partitions, job logs, execution history, and row locks for atomic task dispatch. |
-| **`scheduler_redis`** | Redis 7 (Alpine) | High-speed cache storing realtime throughput metrics and API rate-limiting tokens on port `6379`. |
-| **`scheduler_worker`** | Python / ThreadPool | Ephemeral worker nodes polling queued tasks via `FOR UPDATE SKIP LOCKED`, executing payloads, and streaming heartbeats. |
-| **`scheduler_leader`** | Python / Croniter | Centralized leader process sweeping scheduled/cron jobs and spawning executable child instances into active queues. |
-| **`scheduler_reaper`** | Python / Heartbeat Monitor | Cluster liveness monitor detecting crashed worker processes, marking them `dead`, and safely re-enqueuing abandoned tasks. |
-| **`scheduler_pgadmin`** | PgAdmin 4 | Web-based database management interface on port `5050` (optional administration GUI). |
-
----
-
-## 4. Job State Machine & Lifecycle
-
-Every job submitted to Codity moves through a strictly validated, state machine:
+Codity operates as a highly concurrent distributed system. Here is the visual architecture representing the flow of jobs and worker coordination:
 
 ```mermaid
-stateDiagram-v2
-    [*] --> QUEUED : Immediate Job Submitted
-    [*] --> SCHEDULED : Delayed / Cron Job Submitted
-    
-    SCHEDULED --> QUEUED : Leader Fired (scheduled_at <= NOW())
-    
-    QUEUED --> CLAIMED : Worker Atomic Claim (SKIP LOCKED)
-    CLAIMED --> RUNNING : Worker Execution Started
-    
-    RUNNING --> COMPLETED : Payload Execution Success
-    RUNNING --> FAILED : Payload Threw Exception / Timeout
-    
-    FAILED --> QUEUED : Retry Policy Applied (Attempt < Max Retries)
-    FAILED --> DEAD : Max Retries Exceeded (Moved to DLQ)
-    
-    CLAIMED --> QUEUED : Worker Crashed (Reaper Recovery)
-    RUNNING --> QUEUED : Worker Missed Heartbeat Threshold
-    
-    DEAD --> QUEUED : Admin Manual Replay from DLQ
+flowchart TD
+    subgraph Frontend
+        UI[React 18 Dashboard]
+    end
+
+    subgraph API Layer
+        REST[FastAPI Server]
+        AUTH[Google OAuth / JWT]
+    end
+
+    subgraph Job Orchestration
+        SCHEDULER[Leader Scheduler]
+        REAPER[Dead Worker Reaper]
+    end
+
+    subgraph Worker Cluster
+        W1[Worker Node 1]
+        W2[Worker Node 2]
+        WN[Worker Node N]
+    end
+
+    subgraph Data Persistence
+        PG[(PostgreSQL 16)]
+        REDIS[(Redis 7)]
+    end
+
+    UI <--> |HTTPS / REST| REST
+    REST <--> |OAuth| AUTH
+    REST --> |Enqueues Jobs| PG
+    REST --> |Reads Metrics| REDIS
+
+    SCHEDULER --> |Promotes Delayed/Cron Jobs| PG
+    REAPER --> |Sweeps Dead Workers & Re-queues| PG
+
+    W1 <--> |SELECT FOR UPDATE SKIP LOCKED| PG
+    W2 <--> |SELECT FOR UPDATE SKIP LOCKED| PG
+    WN <--> |Heartbeats| PG
+
+    W1 -.-> |Caches/Limits| REDIS
+    W2 -.-> |Caches/Limits| REDIS
 ```
 
-### State Definitions
-* **`QUEUED`**: Eligible for immediate claiming by active worker processes.
-* **`SCHEDULED`**: Held for future execution (cron trigger or delayed timestamp `scheduled_at`).
-* **`CLAIMED`**: Atomically locked by a specific worker node (`worker_id`).
-* **`RUNNING`**: Active execution in progress on a worker thread.
-* **`COMPLETED`**: Execution finished with return code `0` / clean status.
-* **`FAILED`**: Execution failed; backoff delay calculated before re-enqueueing.
-* **`DEAD`**: Permanent failure. Retries exhausted; stored in Dead Letter Queue for inspection/replay.
-
----
-
-## 5. Execution Lifecycle & Mathematical Models
-
-### 5.1 Atomic Worker Job Claiming
-Workers execute atomic job reservations via PostgreSQL row-level locks:
-
-```sql
-WITH next_job AS (
-    SELECT id
-    FROM jobs
-    WHERE queue_id = :queue_id
-      AND status = 'queued'
-      AND (scheduled_at IS NULL OR scheduled_at <= NOW())
-    ORDER BY priority ASC, created_at ASC
-    FOR UPDATE SKIP LOCKED
-    LIMIT 1
-)
-UPDATE jobs
-SET status = 'claimed',
-    worker_id = :worker_id,
-    updated_at = NOW()
-FROM next_job
-WHERE jobs.id = next_job.id
-RETURNING jobs.*;
-```
-* **Queue Concurrency Limits**: Before claiming a job from queue Q, the system verifies that current active claimed/running jobs for Q do not exceed `queue.concurrency_limit`.
-
-### 5.2 Retry Policy & Backoff Math
-When a job fails, the system calculates the delay before the job becomes eligible for retry based on the Queue's configured strategy:
-
-1. **Fixed Delay**:
-   `Delay = base_delay`
-
-2. **Linear Backoff**:
-   `Delay = base_delay * retry_count`
-
-3. **Exponential Backoff**:
-   `Delay = base_delay * (2 ^ retry_count)`
-
-`Scheduled Time = NOW() + Delay`
-
-### 5.3 Cluster Fault Tolerance & Reaper Recovery
-* **Heartbeat Mechanism**: Every worker process sends an heartbeat ping every 5 seconds updating its record in the `workers` table:
-  ```sql
-  UPDATE workers SET last_heartbeat = NOW() WHERE id = :worker_id;
-  ```
-* **Reaper Sweeper**: The Reaper service sweeps the `workers` table every 10 seconds to detect dead worker nodes:
-  ```sql
-  SELECT id FROM workers WHERE last_heartbeat < NOW() - INTERVAL '15 seconds';
-  ```
-* **Orphan Job Rescheduling**: Any jobs stuck in `claimed` or `running` assigned to a `dead` worker are automatically reset to `queued` with their retry counters updated, ensuring zero lost tasks.
-
----
-
-## 6. Project Directory Structure
-
-```
-codity/
-├── app/                        # FastAPI Backend & Async Workers
-│   ├── api/                    # REST Endpoint Handlers
-│   │   └── v1/
-│   │       └── endpoints/      # auth, jobs, queues, workers, dlq, metrics
-│   ├── core/                   # Security, Config, Database Engine
-│   ├── db/                     # Alembic Migrations & Models
-│   ├── models/                 # SQLAlchemy Data Models
-│   ├── schemas/                # Pydantic Request/Response Schemas
-│   ├── services/               # Core Business Logic (queue, claim, scheduler)
-│   └── workers/                # Cluster Background Processes
-│       ├── worker_process.py   # Task Execution Worker
-│       ├── leader_process.py   # Cron Sweeper & Scheduler Leader
-│       └── reaper_process.py   # Heartbeat Reaper & Recovery
-├── docs/                       # Project Documentation & Architecture
-├── frontend/                   # React 18 + Vite + MUI Dashboard
-│   ├── src/
-│   │   ├── api/                # Axios API Clients
-│   │   ├── components/         # Reusable UI Cards, Modals, Layout
-│   │   ├── pages/              # Dashboard, Jobs, Queues, Workers, DLQ
-│   │   └── theme/              # MUI Square Dark Theme Setup
-│   ├── Dockerfile              # Multi-stage Frontend Production Build
-│   └── package.json
-├── docker-compose.yml          # Full 8-Container Orchestration Manifest
-├── Dockerfile                  # Python Backend Container Spec
-├── requirements.txt            # Python Dependencies
-└── README.md                   # Project Overview & Quickstart
-```
-
----
-
-## 7. How to Start & Run the Project
-
-### Method A: Production Setup (Recommended — Docker 1-Command)
-Run everything effortlessly in Docker with 1 single command from the project root directory `C:\Ayush\Desktop\codity`:
-
-```bash
-# 1. Clone the repository (if not already local)
-git clone https://github.com/your-username/codity.git
-cd codity
-
-# 2. Build and launch all 8 services in background
-docker compose up --build -d
-```
-
-#### Access Points
-* 🎨 **Frontend Web Dashboard**: [http://localhost:5173](http://localhost:5173)
-* ⚡ **Backend REST API Specs (Swagger)**: [http://localhost:8000/docs](http://localhost:8000/docs)
-* 🗄️ **PgAdmin Database Manager**: [http://localhost:5050](http://localhost:5050)
-
-#### Scale Worker Compute Nodes
-To scale up worker nodes across the cluster on demand:
-```bash
-docker compose up -d --scale worker=4
-```
-
----
-
-### Method B: Local Developer Setup (No Docker for App Code)
-
-If you wish to run the React frontend and FastAPI backend directly on your local machine for rapid development:
-
-#### Step 1: Start Database & Redis Prerequisites via Docker
-```bash
-docker compose up -d postgres redis
-```
-
-#### Step 2: Set Up Python Backend Virtual Environment
-```bash
-# Create virtual environment
-python -m venv venv
-
-# Activate virtual environment (Windows PowerShell)
-.\venv\Scripts\Activate.ps1
-
-# Install backend dependencies
-pip install -r requirements.txt
-
-# Run Alembic Database Migrations
-alembic upgrade head
-```
-
-#### Step 3: Launch Local Services (Separate Terminals)
-
-1. **Start FastAPI Control Plane API**:
-   ```bash
-   uvicorn app.main:app --reload --port 8000
-   ```
-
-2. **Start Background Worker Node**:
-   ```bash
-   python -m app.workers.worker_process
-   ```
-
-3. **Start Leader Cron Sweeper**:
-   ```bash
-   python -m app.workers.leader_process
-   ```
-
-4. **Start Cluster Reaper Service**:
-   ```bash
-   python -m app.workers.reaper_process
-   ```
-
-5. **Start React Frontend (Vite Dev Server)**:
-   ```bash
-   cd frontend
-   npm install
-   npm run dev
-   ```
-
-Open [http://localhost:5173](http://localhost:5173) in your browser!
-
----
-
-## 8. Cloud-Native Production & Kubernetes Readiness
-
-Codity is fully compatible with all major cloud platforms and container orchestration platforms.
-
-### Production Resources Created:
-1. **Production Compose Spec**: [`docker-compose.prod.yml`](file:///c:/Ayush/Desktop/codity/docker-compose.prod.yml) (includes log rotation, container restart policies, and healthchecks).
-2. **Kubernetes Production Manifests**: [`k8s/codity-all-in-one.yaml`](file:///c:/Ayush/Desktop/codity/k8s/codity-all-in-one.yaml) (Namespace, ConfigMaps, Secrets, API, Workers, Leader, Reaper, Frontend LoadBalancer).
-3. **Universal Cloud Deployment Manual**: [`docs/CLOUD_DEPLOYMENT.md`](file:///c:/Ayush/Desktop/codity/docs/CLOUD_DEPLOYMENT.md) (step-by-step guides for AWS ECS/EKS, GCP Cloud Run/GKE, Azure Container Apps/AKS, DigitalOcean, Railway, Render, Fly.io).
-
+### Schema & Architecture Highlights:
+- **Atomic Claiming**: Your workers rely on the `jobs` and `workers` table indexes to execute `SELECT ... FOR UPDATE SKIP LOCKED`. This guarantees that in a multi-worker environment, no two workers will ever process the same job at the same time.
+- **Self-Healing Design**: The Reaper process specifically scans the `Worker` table for `last_heartbeat_at` anomalies. If a worker crashes or drops off the network, the Reaper automatically strips its jobs and transitions them back to the queue, while marking the worker as `dead`.
+- **Data Integrity**: By utilizing strict PostgreSQL Foreign Key constraints (`ON DELETE CASCADE` and `ON DELETE SET NULL`) combined with native Enums (`JobStatus`, `WorkerStatus`), the database mathematically guarantees that you cannot have corrupted state transitions or orphaned data records.
