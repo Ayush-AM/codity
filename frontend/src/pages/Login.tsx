@@ -18,7 +18,6 @@ import {
   VisibilityOff,
   AutoAwesome,
   FlashOn,
-  GitHub,
   Google,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
@@ -39,7 +38,7 @@ export const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleOAuthLogin = async (provider: 'google' | 'github') => {
+  const handleOAuthLogin = async (provider: 'google') => {
     setLoading(true);
     setError(null);
     try {
@@ -332,26 +331,6 @@ export const Login: React.FC = () => {
                 Google
               </Button>
 
-              <Button
-                variant="outlined"
-                fullWidth
-                disabled={loading}
-                onClick={() => handleOAuthLogin('github')}
-                startIcon={<GitHub sx={{ color: '#ffffff' }} />}
-                sx={{
-                  color: '#ffffff',
-                  borderColor: '#37393e',
-                  borderRadius: '4px',
-                  textTransform: 'none',
-                  fontWeight: 700,
-                  fontFamily: 'var(--font-mono)',
-                  py: 1.2,
-                  bgcolor: '#181A20',
-                  '&:hover': { borderColor: '#ffffff', bgcolor: 'rgba(255, 255, 255, 0.08)' }
-                }}
-              >
-                GitHub
-              </Button>
             </Box>
 
             <Button
