@@ -2,10 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Box, CircularProgress, Typography, Alert } from '@mui/material';
 import { authApi } from '../api/auth';
+import { useAuth } from '../context/AuthContext';
 
 export const AuthCallback: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { setAuthData } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const processedRef = React.useRef(false);
 
@@ -32,8 +34,7 @@ export const AuthCallback: React.FC = () => {
           full_name: name || undefined,
         });
 
-        localStorage.setItem('token', res.access_token);
-        localStorage.setItem('user', JSON.stringify(res.user));
+        setAuthData(res.access_token, res.user);
         navigate('/dashboard', { replace: true });
       } catch (err: any) {
         const msg =
@@ -46,7 +47,7 @@ export const AuthCallback: React.FC = () => {
     };
 
     handleOAuthCallback();
-  }, [searchParams, navigate]);
+  }, [searchParams, navigate, setAuthData]);
 
   return (
     <Box

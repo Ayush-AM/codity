@@ -6,6 +6,7 @@ interface AuthContextType {
   token: string | null;
   isLoading: boolean;
   login: (data: LoginPayload) => Promise<void>;
+  setAuthData: (token: string, user: User) => void;
   logout: () => void;
   isAdmin: boolean;
 }
@@ -43,22 +44,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     verifyAuth();
   }, []);
 
+  const setAuthData = (newToken: string, newUser: User) => {
+    setToken(newToken);
+    setUser(newUser);
+    localStorage.setItem('token', newToken);
+    localStorage.setItem('user', JSON.stringify(newUser));
+  };
+
   const login = async (credentials: LoginPayload) => {
     const response = await authApi.login(credentials);
-    setToken(response.access_token);
-    localStorage.setItem('token', response.access_token);
-    if (response.user) {
-      setUser(response.user);
-      localStorage.setItem('user', JSON.stringify(response.user));
-    } else {
-      try {
-        const me = await authApi.getMe();
-        setUser(me);
-        localStorage.setItem('user', JSON.stringify(me));
-      } catch {
-        // fallback
-      }
-    }
+    setAuthData(response.access_token, response.user);
   };
 
   const logout = () => {
@@ -72,7 +67,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isAdmin = user?.role === 'admin';
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, logout, isAdmin }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, setAuthData, logout, isAdmin }}>
       {children}
     </AuthContext.Provider>
   );
