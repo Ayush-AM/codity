@@ -7,8 +7,12 @@ export const AuthCallback: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
+  const processedRef = React.useRef(false);
 
   useEffect(() => {
+    if (processedRef.current) return;
+    processedRef.current = true;
+
     const handleOAuthCallback = async () => {
       const code = searchParams.get('code');
       const provider = searchParams.get('provider') || searchParams.get('state') || 'google';
