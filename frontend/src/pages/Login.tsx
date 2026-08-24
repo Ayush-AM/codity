@@ -24,7 +24,7 @@ import { useAuth } from '../hooks/useAuth';
 import { authApi } from '../api/auth';
 
 export const Login: React.FC = () => {
-  const { login } = useAuth();
+  const { login, setAuthData } = useAuth();
   const navigate = useNavigate();
 
   const [isRegister, setIsRegister] = useState(false);
@@ -32,7 +32,6 @@ export const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [termsAccepted, setTermsAccepted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -52,10 +51,6 @@ export const Login: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isRegister && !termsAccepted) {
-      setError('You must agree to the terms and conditions.');
-      return;
-    }
     setError(null);
     setLoading(true);
     try {
@@ -69,9 +64,8 @@ export const Login: React.FC = () => {
           full_name: `${firstName} ${lastName}`.trim(),
           organization_name: 'Default Org',
         });
-        localStorage.setItem('token', res.access_token);
-        localStorage.setItem('user', JSON.stringify(res.user));
-        window.location.href = '/dashboard';
+        setAuthData(res.access_token, res.user);
+        navigate('/dashboard', { replace: true });
       }
     } catch (err: any) {
       const msg =
