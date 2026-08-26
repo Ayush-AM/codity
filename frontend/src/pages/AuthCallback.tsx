@@ -35,7 +35,7 @@ export const AuthCallback: React.FC = () => {
         });
 
         setAuthData(res.access_token, res.user);
-        navigate('/dashboard', { replace: true });
+        window.location.href = '/dashboard';
       } catch (err: any) {
         const msg =
           err.response?.data?.detail ||

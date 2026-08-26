@@ -56,7 +56,7 @@ export const Login: React.FC = () => {
     try {
       if (!isRegister) {
         await login({ email, password });
-        navigate('/dashboard', { replace: true });
+        window.location.href = '/dashboard';
       } else {
         const res = await authApi.register({
           email,
@@ -65,7 +65,7 @@ export const Login: React.FC = () => {
           organization_name: 'Default Org',
         });
         setAuthData(res.access_token, res.user);
-        navigate('/dashboard', { replace: true });
+        window.location.href = '/dashboard';
       }
     } catch (err: any) {
       const msg =

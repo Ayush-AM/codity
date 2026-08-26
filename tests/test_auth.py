@@ -129,8 +129,8 @@ def test_oauth_user_password_login_returns_401(client: TestClient):
     oauth_payload = {
         "provider": "google",
         "email": oauth_email,
-        "full_name": "OAuth User Test",
-        "code": "test_code_123",
+        "full_name": "OAuth User",
+        "code": "sample_oauth_code",
     }
     res_oauth = client.post("/api/v1/auth/oauth/login", json=oauth_payload)
     assert res_oauth.status_code == 200
