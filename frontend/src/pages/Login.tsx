@@ -68,9 +68,15 @@ export const Login: React.FC = () => {
         window.location.href = '/dashboard';
       }
     } catch (err: any) {
-      const msg =
-        err.response?.data?.detail ||
-        (typeof err.response?.data === 'string' ? err.response?.data : 'Authentication failed. Please check your credentials.');
+      let msg = 'Authentication failed. Please check your credentials.';
+      const detail = err.response?.data?.detail;
+      if (typeof detail === 'string') {
+        msg = detail;
+      } else if (Array.isArray(detail) && detail.length > 0) {
+        msg = detail.map((item: any) => item.msg || item.message || String(item)).join(', ');
+      } else if (typeof err.response?.data === 'string') {
+        msg = err.response?.data;
+      }
       setError(msg);
     } finally {
       setLoading(false);
@@ -220,13 +226,24 @@ export const Login: React.FC = () => {
             />
 
             <TextField
-              placeholder="Enter your password"
+              placeholder={isRegister ? "Password (min. 8 characters)" : "Enter your password"}
               type={showPassword ? 'text' : 'password'}
               required
               fullWidth
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              sx={inputSx}
+              inputProps={{ minLength: isRegister ? 8 : 1 }}
+              helperText={isRegister && password.length > 0 && password.length < 8 ? "Password must be at least 8 characters" : ""}
+              error={isRegister && password.length > 0 && password.length < 8}
+              sx={{
+                ...inputSx,
+                '& .MuiFormHelperText-root': {
+                  color: '#ff4d4d',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '0.75rem',
+                  mt: 0.5,
+                },
+              }}
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
