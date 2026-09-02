@@ -36,6 +36,7 @@ This document records the completed engineering milestones, system features, and
 - Single-command Docker Compose orchestrator (`docker-compose.yml` and `docker-compose.prod.yml`).
 - Production Kubernetes manifest (`k8s/codity-all-in-one.yaml`).
 - Production AWS EC2 Deployment Guide (`docs/AWS_DEPLOYMENT_GUIDE.md`).
+- Universal Cloud Deployment Manual (`docs/CLOUD_DEPLOYMENT.md`).
 
 ### 7. Google OAuth & Production UI Polish
 - End-to-end Single Sign-On (SSO) integration using Google OAuth 2.0.
@@ -47,11 +48,11 @@ This document records the completed engineering milestones, system features, and
 
 ## Verification & Test Suite Status
 
-* **Automated Tests**: 41 / 41 Pytest test cases passing cleanly.
+* **Automated Tests**: 42 / 42 Pytest test cases passing cleanly.
 * **Build Verification**: Vite production bundle compiled with zero warnings/errors.
 * **Docker Verification**: All container services running healthy.
 
-### Test Suite Breakdown (41 / 41 Passing)
+### Test Suite Breakdown (42 / 42 Passing)
 
 1. **Authentication, Multi-Tenancy & OAuth (8 Tests)**: `test_register_new_tenant`, `test_login_success`, `test_login_invalid_password`, `test_protected_route_with_and_without_token`, `test_get_oauth_url`, `test_oauth_login_new_user`, `test_oauth_login_existing_user`, `test_oauth_login_invalid_provider`.
 2. **Atomic Concurrency & Worker Claiming (4 Tests)**: `test_concurrent_atomic_claims`, `test_atomic_claim_jobs`, `test_worker_heartbeat_lifecycle`, `test_postgresql_advisory_locks`.

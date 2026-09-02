@@ -29,8 +29,40 @@ Access all deep-dive architecture specs, database schemas, design decisions, and
 | 🗄️ **Database Schema & ERD** | [`docs/DATABASE_SCHEMA.md`](docs/DATABASE_SCHEMA.md) | Complete Relational ER Diagram, Indexing strategies, FK Cascading rules, table schema specifications. |
 | 💡 **Design Decisions & Trade-offs** | [`docs/DESIGN_DECISIONS.md`](docs/DESIGN_DECISIONS.md) | Technical rationale: Postgres `SKIP LOCKED` vs RabbitMQ/Celery, Redis `SETNX` idempotency, jittered exponential backoffs. |
 | ☁️ **Universal Cloud Hosting** | [`docs/CLOUD_DEPLOYMENT.md`](docs/CLOUD_DEPLOYMENT.md) | Step-by-step guides for AWS ECS/EKS, GCP Cloud Run, Azure, DigitalOcean, Kubernetes, Railway, Render, Fly.io. |
-| 📈 **Milestones & Progress Log** | [`docs/PROGRESS.md`](docs/PROGRESS.md) | Feature implementation log, 37 test suite validation history, completed system milestones. |
+| 📈 **Milestones & Progress Log** | [`docs/PROGRESS.md`](docs/PROGRESS.md) | Feature implementation log, 42 test suite validation history, completed system milestones. |
 | 📋 **Assignment Briefs & Specs** | [`docs/specs/`](docs/specs/) | Original specification documents including `task.txt` and problem statement PDFs. |
+
+---
+
+## 🗺️ System Roadmap & Implementation Lifecycle
+
+The Codity platform follows a phased enterprise engineering roadmap:
+
+### 🟢 Phase 1: High-Throughput Execution Engine (Completed)
+- [x] Atomic job claiming primitive using PostgreSQL `SELECT ... FOR UPDATE SKIP LOCKED`.
+- [x] 24-hour Redis `SETNX` idempotency deduplication cache with PostgreSQL fallback.
+- [x] Distributed single-leader advisory lock scheduler (`pg_try_advisory_lock`) for cron and delayed jobs.
+- [x] Configurable retry backoff strategies (`Fixed`, `Linear`, `Exponential with Full Jitter`).
+- [x] Dead Letter Queue (DLQ) holding tank with single-click manual job replay.
+- [x] Autonomous Reaper process sweeping dead nodes (expired heartbeats > 15s) and recovering in-flight tasks.
+
+### 🟢 Phase 2: Enterprise Multi-Tenancy & Authentication (Completed)
+- [x] Hierarchical data model (`Organizations` → `Projects` → `Queues` → `Jobs`).
+- [x] JWT Bearer authentication with Bcrypt password hashing (`rounds=12`) and Role-Based Access Control (`ADMIN` vs `MEMBER`).
+- [x] Google OAuth 2.0 Single Sign-On (SSO) with auto-tenant provisioning.
+- [x] Public IP to `sslip.io` domain mapping (`3.7.73.152.sslip.io`) for OAuth callback compliance.
+
+### 🟢 Phase 3: Production UX & AWS Cloud Infrastructure (Completed)
+- [x] Responsive React 18 SPA dashboard with real-time KPI metrics, execution throughput graphs, and job explorers.
+- [x] Production Docker Compose containerization (`docker-compose.prod.yml`).
+- [x] Automated AWS EC2 (`t3.small`) deployment in `ap-south-1` (Mumbai) with AWS ECR image registry.
+- [x] Unified Kubernetes production deployment specification (`k8s/codity-all-in-one.yaml`).
+
+### 🟡 Phase 4: Enterprise Scale, Webhooks & Observability (Upcoming)
+- [ ] **Webhook Dispatch Engine**: Configurable HTTP webhook callbacks on job completion, failure, or DLQ transition.
+- [ ] **Prometheus & Grafana Exporter**: Native `/metrics` endpoint exporting queue latency, throughput, and worker saturation metrics.
+- [ ] **OpenTelemetry Distributed Tracing**: Trace context propagation across API endpoints, queue enqueues, and worker executions.
+- [ ] **Dynamic Horizontal Worker Autoscaling (HPA)**: Kubernetes worker pod auto-scaling driven by queue depth.
 
 ---
 
@@ -125,7 +157,7 @@ docker compose up -d --scale worker=4
 
 ## Running Automated Tests
 
-Run the comprehensive 37-test automated test suite (Auth, Concurrency, Jobs, Workers, Retries, Reaper, DLQ, Telemetry):
+Run the comprehensive 42-test automated test suite (Auth, Concurrency, Jobs, Workers, Retries, Reaper, DLQ, Telemetry):
 
 ```bash
 pytest
@@ -133,10 +165,10 @@ pytest
 
 Output:
 ```text
-============================== 37 passed in 6.76s ==============================
+============================== 42 passed in 6.76s ==============================
 ```
 
-### Automated Test Cases Breakdown (37 / 37 Passing)
+### Automated Test Cases Breakdown (42 / 42 Passing)
 
 | Category | Test Case Function | Description & Verification |
 | :--- | :--- | :--- |
@@ -144,6 +176,10 @@ Output:
 | | `test_login_success` | Verifies JWT token generation and Bcrypt password verification (rounds=12). |
 | | `test_login_invalid_password` | Verifies `401 Unauthorized` response on invalid password. |
 | | `test_protected_route_with_and_without_token` | Verifies tenant isolation and Bearer token enforcement on protected routes. |
+| | `test_get_oauth_url` | Verifies Google OAuth 2.0 authorization redirect URL generation. |
+| | `test_oauth_login_new_user` | Verifies single sign-on user creation and tenant provisioning. |
+| | `test_oauth_login_existing_user` | Verifies single sign-on for pre-existing account email logins. |
+| | `test_oauth_login_invalid_provider` | Verifies rejection of unsupported OAuth auth providers. |
 | **Atomic Concurrency & Worker Claiming** | `test_concurrent_atomic_claims` | Simulates 10 parallel worker threads claiming jobs; verifies 0 duplicate claims via `FOR UPDATE SKIP LOCKED`. |
 | | `test_atomic_claim_jobs` | Verifies transition of queued jobs to `claimed` status with assigned worker IDs. |
 | | `test_worker_heartbeat_lifecycle` | Verifies worker node registration, 5-second heartbeats, and graceful deregistration. |
@@ -223,7 +259,7 @@ Output:
 │   ├── DATABASE_SCHEMA.md      # Relational Schema & Indexing Models
 │   ├── DESIGN_DECISIONS.md     # Technical Trade-offs & Analysis
 │   └── PROGRESS.md             # Milestone Tracking
-├── tests/                      # Full Pytest Test Suite (37 Tests)
+├── tests/                      # Full Pytest Test Suite (42 Tests)
 ├── docker-compose.yml          # Multi-container orchestration
 ├── docker-compose.prod.yml     # Production compose spec
 ├── Dockerfile                  # Multi-stage Python 3.11 build
